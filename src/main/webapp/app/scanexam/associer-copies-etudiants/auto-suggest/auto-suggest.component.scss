@@ -1,0 +1,88 @@
+/* Définir les variables globales */
+:root {
+  --primary-color: #2196f3;
+  --secondary-color: #f44336;
+  --background-color: #f0f0f0;
+  --text-color: #000;
+  --font-size-small: 12px;
+  --font-size-medium: 14px;
+}
+
+/* Global box-sizing */
+* {
+  box-sizing: border-box;
+}
+
+.parentContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+.annotationContainer {
+  width: 600px;
+}
+
+.annotationContainer {
+  background-color: #a0d2fa;
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-start;
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--primary-color);
+  flex-grow: 1;
+}
+
+.annotationContainer i {
+  font-size: 18px;
+  color: var(--primary-color);
+  margin-right: 8px;
+}
+
+.annotationContainerText {
+  font-size: var(--font-size-medium);
+  color: var(--text-color);
+  margin: 0;
+}
+
+.container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid var(--primary-color);
+  border-radius: 4px;
+  flex-grow: 1;
+  max-width: 600px;
+  min-width: 200px;
+}
+
+.suggestedName,
+.suggestedFirstName {
+  font-size: var(--font-size-medium);
+  color: var(--text-color);
+  text-align: center;
+  margin: 0;
+}
+
+.btn-acceptSuggest,
+.btn-createSuggest {
+  font-size: var(--font-size-small);
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--primary-color);
+  background-color: var(--background-color);
+  cursor: pointer;
+}
+
+.btn-acceptSuggest {
+  color: var(--primary-color);
+}
+
+.btn-createSuggest {
+  color: var(--secondary-color);
+}

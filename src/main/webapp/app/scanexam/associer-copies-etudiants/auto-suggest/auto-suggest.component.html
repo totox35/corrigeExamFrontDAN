@@ -1,0 +1,29 @@
+<head>
+  <!-- Inclusion de Font Awesome -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet" />
+</head>
+
+<body>
+  <div class="parentContainer">
+    <div class="annotationContainer">
+      <i class="fas fa-robot"></i>
+      <div class="annotationContainerText">1 suggestion de rapprochement</div>
+    </div>
+    <div class="container">
+      <div style="font-style: oblique">Etudiant :</div>
+      <div class="suggestedName" style="font-size: small">
+        {{ suggestedName }}
+      </div>
+      <div class="suggestedFirstName" style="font-size: small">
+        {{ suggestedFirstName }}
+      </div>
+      <div class="suggestedINE" style="font-style: italic; font-size: x-small">
+        {{ suggestedINE }}
+      </div>
+      <div class="button">
+        <button class="btn-acceptSuggest" aria-label="Accepter la suggestion">Submit</button>
+        <button class="btn-createSuggest" aria-label="Annuler la suggestion">Cancel</button>
+      </div>
+    </div>
+  </div>
+</body>

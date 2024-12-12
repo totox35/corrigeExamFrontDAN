@@ -7,6 +7,7 @@ import { ExamService } from '../../entities/exam/service/exam.service';
 import { ZoneService } from '../../entities/zone/service/zone.service';
 import { CourseService } from 'app/entities/course/service/course.service';
 import { MltComponent } from '../mlt/mlt.component';
+import { AutoSuggestComponent } from './auto-suggest/auto-suggest.component';
 import { ActivatedRoute, Router } from '@angular/router';
 import { ConfirmationService, MessageService, SelectItem, PrimeTemplate } from 'primeng/api';
 import { IExam } from 'app/entities/exam/exam.model';
@@ -111,6 +112,7 @@ interface PredictResult {
     ListboxModule,
     NgClass,
     TranslateModule,
+    AutoSuggestComponent,
   ],
 })
 export class AssocierCopiesEtudiantsComponent implements OnInit, AfterViewInit {
