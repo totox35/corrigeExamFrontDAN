@@ -21,7 +21,8 @@
   margin-top: 20px;
 }
 
-.annotationContainer {
+.annotationContainer,
+.annotationContainerCreate {
   width: 600px;
 }
 
@@ -36,15 +37,38 @@
   flex-grow: 1;
 }
 
+.annotationContainerCreate {
+  background-color: #4fb354;
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-start;
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid #135223;
+  flex-grow: 1;
+}
+
 .annotationContainer i {
   font-size: 18px;
   color: var(--primary-color);
   margin-right: 8px;
 }
 
+.annotationContainerCreate i {
+  font-size: 18px;
+  color: #135223;
+  margin-right: 8px;
+}
+
 .annotationContainerText {
   font-size: var(--font-size-medium);
   color: var(--text-color);
+  margin: 0;
+}
+
+.annotationContainerTextCreate {
+  font-size: var(--font-size-medium);
+  color: #135223;
   margin: 0;
 }
 
@@ -59,6 +83,20 @@
   flex-grow: 1;
   max-width: 600px;
   min-width: 200px;
+}
+
+.studentContainerCreate {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid #135223;
+  border-radius: 4px;
+  flex-grow: 1;
+  max-width: 600px;
+  min-width: 200px;
+  width: 100%;
 }
 
 .suggestedName,

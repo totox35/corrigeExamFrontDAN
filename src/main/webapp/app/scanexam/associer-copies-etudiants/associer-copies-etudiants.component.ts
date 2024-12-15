@@ -2,7 +2,7 @@
 /* eslint-disable prefer-const */
 /* eslint-disable no-console */
 
-import { AfterViewInit, Component, HostListener, OnInit, ViewChild, effect } from '@angular/core';
+import { AfterViewInit, ChangeDetectorRef, Component, HostListener, Inject, OnInit, ViewChild, effect } from '@angular/core';
 import { ExamService } from '../../entities/exam/service/exam.service';
 import { ZoneService } from '../../entities/zone/service/zone.service';
 import { CourseService } from 'app/entities/course/service/course.service';
@@ -26,7 +26,7 @@ import { PreferenceService } from '../preference-page/preference.service';
 import { CacheServiceImpl } from '../db/CacheServiceImpl';
 import { ShortcutInput, KeyboardShortcutsModule } from 'ng-keyboard-shortcuts';
 import { TranslateService, TranslateModule } from '@ngx-translate/core';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, Subscription } from 'rxjs';
 import { DoPredictionsInputSamePage } from 'app/opencv.worker';
 import { DialogService } from 'primeng/dynamicdialog';
 import { AllbindingsComponent } from './allbindings/allbindings.component';
@@ -45,6 +45,7 @@ import { GalleriaModule } from 'primeng/galleria';
 import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { BlockUIModule } from 'primeng/blockui';
 import { ToastModule } from 'primeng/toast';
+import Fuse from 'fuse.js';
 
 export interface IPage {
   image?: ImageData;
@@ -118,6 +119,9 @@ interface PredictResult {
 export class AssocierCopiesEtudiantsComponent implements OnInit, AfterViewInit {
   @ViewChild('list')
   list: Listbox | undefined;
+  @ViewChild(AutoSuggestComponent) autoSuggestComponent!: AutoSuggestComponent;
+  isAValidSuggestion: boolean = false;
+  private predictionSubscription?: Subscription;
   set _list(l: Listbox | undefined) {}
   get _list(): Listbox | undefined {
     return this.list;
@@ -240,6 +244,7 @@ export class AssocierCopiesEtudiantsComponent implements OnInit, AfterViewInit {
     private translateService: TranslateService,
     public dialogService: DialogService,
     private titleService: Title,
+    private cdr: ChangeDetectorRef,
   ) {
     effect(
       () => {
@@ -251,9 +256,9 @@ export class AssocierCopiesEtudiantsComponent implements OnInit, AfterViewInit {
     );
   }
 
-  ngOnInit(): void {
+  async ngOnInit(): Promise<void> {
     this.filterbindstudent = this.preferenceService.getFilterStudentPreference();
-    this.activatedRoute.paramMap.subscribe(params => {
+    this.activatedRoute.paramMap.subscribe(async params => {
       this.recognizedStudent = undefined;
       this.blocked = true;
       if (params.get('examid') !== null) {
@@ -314,6 +319,24 @@ export class AssocierCopiesEtudiantsComponent implements OnInit, AfterViewInit {
           });
         }
       }
+
+      this.nameImageImg = '';
+      this.firstnameImageImg = '';
+      this.ineImageImg = '';
+      await this.waitForImagesToLoad();
+      await this.autoSuggestComponent.loadNameSuggestions(this.nameImageImg, this.firstnameImageImg, this.ineImageImg);
+      if (this.predictionSubscription) {
+        this.predictionSubscription.unsubscribe();
+      }
+      this.predictionSubscription = this.autoSuggestComponent.suggestedValues$.subscribe(values => {
+        this.recognizedStudent = {
+          name: values.name,
+          firstname: values.firstName,
+          ine: values.ine,
+        };
+        console.log('Recognized Student mis à jour :', this.recognizedStudent);
+        this.matchRecognizedStudent();
+      });
     });
   }
 
@@ -563,6 +586,7 @@ export class AssocierCopiesEtudiantsComponent implements OnInit, AfterViewInit {
 
   onPageChange($event: any): void {
     this.selectionStudents = [];
+    this.isAValidSuggestion = false;
     this.goToStudent($event.page);
   }
 
@@ -967,6 +991,23 @@ export class AssocierCopiesEtudiantsComponent implements OnInit, AfterViewInit {
         detail: this.translateService.instant('scanexam.pasdepageassocieeNextTooltip'),
       });
     }
+  }
+
+  private async waitForImagesToLoad(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const checkInterval = setInterval(() => {
+        if (this.nameImageImg && this.firstnameImageImg && this.ineImageImg) {
+          clearInterval(checkInterval);
+          resolve();
+        }
+      }, 100); // Vérifier toutes les 100ms
+
+      // Timeout après 10 secondes si les images ne sont toujours pas prêtes
+      setTimeout(() => {
+        clearInterval(checkInterval);
+        reject(new Error('Les images n’ont pas pu être chargées à temps.'));
+      }, 10000);
+    });
   }
 
   latinMap(): Map<string, string> {
@@ -1803,8 +1844,70 @@ export class AssocierCopiesEtudiantsComponent implements OnInit, AfterViewInit {
     return s?.replace(/[^A-Za-z0-9\[\] ]/g, a => this.latinMap().get(a) ?? a);
   }
 
-  executeMLTScript() {
-    this.mltcomponent.executeMLT(this.nameImageImg);
-    this.mltcomponent.executeMLT(this.firstnameImageImg);
+  async matchRecognizedStudent(): Promise<void> {
+    console.log(this.recognizedStudent);
+    console.log(this.students);
+    if (!this.recognizedStudent || !this.students || this.students.length === 0) {
+      this.messageService.add({
+        severity: 'warn',
+        summary: 'Étudiant non trouvé',
+        detail: 'Aucun étudiant reconnu ou liste d’étudiants vide.',
+      });
+      return;
+    }
+
+    const fuse = new Fuse(this.students, {
+      keys: ['name', 'firstname'], // Les champs où chercher
+      threshold: 1, // Sensibilité (0 = stricte, 1 = très permissive)
+      includeScore: true,
+    });
+
+    // Combiner nom et prénom reconnus pour la recherche
+    const recognizedFullName = `${this.recognizedStudent.name} ${this.recognizedStudent.firstname}`.trim();
+
+    // Recherche
+    const results = fuse.search(recognizedFullName);
+
+    if (results.length > 0) {
+      const bestMatch = results[0].item;
+      const matchScore = results[0].score; // Score de correspondance (plus petit = meilleur)
+
+      // Confirmer ou directement associer
+      if (matchScore !== undefined && matchScore < 0.6) {
+        this.autoSuggestComponent.setTemplate('autobind');
+        this.cdr.detectChanges();
+        // Correspondance automatique si le score est bon
+        this.selectionStudents = [bestMatch];
+        console.log(this.selectionStudents);
+        this.autoSuggestComponent.suggestedName = bestMatch.name;
+        this.autoSuggestComponent.suggestedFirstName = bestMatch.firstname;
+        this.isAValidSuggestion = true;
+        this.cdr.detectChanges();
+        this.blocked = true;
+        await this.bindStudent(this.selectionStudents);
+        this.blocked = false;
+        this.messageService.add({
+          severity: 'success',
+          summary: 'Étudiant associé',
+          detail: `Étudiant "${bestMatch.firstname} ${bestMatch.name}" associé automatiquement.`,
+        });
+      } else {
+        this.autoSuggestComponent.setTemplate('create');
+        this.autoSuggestComponent.replacePatterns();
+        this.cdr.detectChanges();
+        // Si le score est moyen, demander confirmation
+        this.messageService.add({
+          severity: 'info',
+          summary: 'Correspondance trouvée',
+          detail: `Correspondance probable : "${this.autoSuggestComponent.suggestedFirstName} ${this.autoSuggestComponent.suggestedName}". L'étudiant n'existe pas, confirmer pour le créer.`,
+        });
+      }
+    } else {
+      this.messageService.add({
+        severity: 'error',
+        summary: 'Aucun étudiant trouvé',
+        detail: 'Impossible de trouver une correspondance approximative.',
+      });
+    }
   }
 }

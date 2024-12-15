@@ -1,76 +1,100 @@
-import { AfterViewInit, Component, OnInit } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { AfterViewInit, ChangeDetectorRef, Component, OnInit } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { MltComponent } from 'app/scanexam/mlt/mlt.component';
-import { AssocierCopiesEtudiantsComponent } from '../associer-copies-etudiants.component';
-import { firstValueFrom, forkJoin } from 'rxjs';
+import { firstValueFrom, forkJoin, Subject } from 'rxjs';
 
 @Component({
   selector: 'jhi-auto-suggest',
   standalone: true,
-  imports: [],
+  imports: [CommonModule, FormsModule],
   templateUrl: './auto-suggest.component.html',
   styleUrl: './auto-suggest.component.scss',
 })
-export class AutoSuggestComponent implements AfterViewInit {
-  suggestedName: string | undefined = '';
-  suggestedFirstName: string | undefined = '';
-  suggestedINE: string | undefined = '';
+export class AutoSuggestComponent {
+  public suggestedName: string | undefined = '';
+  public suggestedFirstName: string | undefined = '';
+  public suggestedINE: string | undefined = '';
   isLoading: boolean = false; // Indicateur de chargement
   error: string | null = null; // Pour gérer les erreurs
+  selectedTemplate: 'autobind' | 'create' = 'create';
+
+  // Subject pour émettre les changements
+  private suggestedValuesSubject = new Subject<{ name: string; firstName: string; ine: string }>();
+
+  // Observable exposé pour les abonnements
+  suggestedValues$ = this.suggestedValuesSubject.asObservable();
 
   constructor(
     private mltcomponent: MltComponent,
-    private associercopiesetudiantscomponent: AssocierCopiesEtudiantsComponent,
+    private cdr: ChangeDetectorRef,
   ) {}
 
-  async ngAfterViewInit(): Promise<void> {
-    try {
-      // Attendre que les images soient prêtes avant d'appeler action()
-      await this.waitForImagesToLoad();
-      this.loadNameSuggestions(); // Appelle action une fois que les images sont prêtes
-    } catch (err) {
-      console.error('Erreur lors de la préparation des images :', err);
+  emitSuggestions() {
+    if (this.suggestedName && this.suggestedFirstName && this.suggestedINE) {
+      this.suggestedValuesSubject.next({
+        name: this.suggestedName,
+        firstName: this.suggestedFirstName,
+        ine: this.suggestedINE,
+      });
     }
   }
 
-  private async waitForImagesToLoad(): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const checkInterval = setInterval(() => {
-        if (
-          this.associercopiesetudiantscomponent.nameImageImg &&
-          this.associercopiesetudiantscomponent.firstnameImageImg &&
-          this.associercopiesetudiantscomponent.ineImageImg
-        ) {
-          clearInterval(checkInterval); // Arrêter la vérification
-          resolve(); // Les images sont prêtes
-        }
-      }, 100); // Vérifier toutes les 100ms
-
-      // Timeout après 10 secondes si les images ne sont toujours pas prêtes
-      setTimeout(() => {
-        clearInterval(checkInterval);
-        reject(new Error('Les images n’ont pas pu être chargées à temps.'));
-      }, 10000);
-    });
+  clearSuggestions() {
+    this.suggestedFirstName = '';
+    this.suggestedName = '';
+    this.suggestedINE = '';
   }
 
-  async loadNameSuggestions(): Promise<void> {
+  setTemplate(template: 'autobind' | 'create') {
+    this.selectedTemplate = template;
+    this.cdr.detectChanges();
+  }
+
+  replacePatterns(): void {
+    const patterns = new Map<string, string>([
+      [' ', ''], // Remplacer les espaces par des vides
+      [';', 'i'], // Remplacer les points-virgules par des "i"
+      ["'", ''], // Remplacer les apostrophes par des vides
+      ['/', ''], // Remplacer les slashs par des vides
+    ]);
+
+    if (this.suggestedName) {
+      this.suggestedName = this.applyPatterns(this.suggestedName, patterns);
+    }
+    if (this.suggestedFirstName) {
+      this.suggestedFirstName = this.applyPatterns(this.suggestedFirstName, patterns);
+    }
+    if (this.suggestedINE) {
+      this.suggestedINE = this.applyPatterns(this.suggestedINE, patterns);
+    }
+    this.cdr.detectChanges();
+  }
+
+  private applyPatterns(value: string, patterns: Map<string, string>): string {
+    let result = value;
+    patterns.forEach((replacement, pattern) => {
+      const regex = new RegExp(pattern, 'g');
+      result = result.replace(regex, replacement);
+    });
+    return result;
+  }
+
+  async loadNameSuggestions(nameImageImg: any, firstnameImageImg: any, ineImageImg: any): Promise<void> {
     try {
       this.isLoading = true; // Commence le chargement
 
-      // Utilisation de forkJoin pour exécuter les deux requêtes en parallèle
       const results: [string | undefined, string | undefined, string | undefined] = await firstValueFrom(
         forkJoin([
-          this.mltcomponent.executeMLT(this.associercopiesetudiantscomponent.nameImageImg),
-          this.mltcomponent.executeMLT(this.associercopiesetudiantscomponent.firstnameImageImg),
-          this.mltcomponent.executeMLT(this.associercopiesetudiantscomponent.ineImageImg),
+          this.mltcomponent.executeMLT(nameImageImg),
+          this.mltcomponent.executeMLT(firstnameImageImg),
+          this.mltcomponent.executeMLT(ineImageImg),
         ]),
-      ); // Utilisation de firstValueFrom pour obtenir une promesse
-
-      // Vérifie si les résultats sont valides et assigne les valeurs
+      );
       if (results[0] && results[1] && results[2]) {
-        this.suggestedName = results[0]; // Résultat pour le nom
-        this.suggestedFirstName = results[1]; // Résultat pour le prénom
-        this.suggestedINE = results[2]; // Résultat pour l'INE
+        this.suggestedName = results[0];
+        this.suggestedFirstName = results[1];
+        this.suggestedINE = results[2];
       } else {
         throw new Error('Les résultats de l’inférence sont incomplets.');
       }
@@ -78,7 +102,8 @@ export class AutoSuggestComponent implements AfterViewInit {
       console.error('Erreur lors de l’inférence :', err);
       this.error = 'Une erreur est survenue lors de l’inférence.';
     } finally {
-      this.isLoading = false; // Fin du chargement
+      this.emitSuggestions();
+      this.isLoading = false;
     }
   }
 }
