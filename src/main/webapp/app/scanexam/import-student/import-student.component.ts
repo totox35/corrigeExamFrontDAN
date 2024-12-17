@@ -253,6 +253,12 @@ export class ImportStudentComponent implements OnInit {
     }
   }
 
+  public addOneStudent(ajout: Std): void {
+    if (this.canImport()) {
+      this.dataset.push(ajout);
+    }
+  }
+
   private emptyStd(): Std {
     return { ine: '', nom: '', prenom: '', mail: '', groupe: '' };
   }
@@ -337,11 +343,12 @@ export class ImportStudentComponent implements OnInit {
     return data.map(e => e[prop]).filter((str): str is string => typeof str === 'string' && str.length > 0);
   }
 
-  envoiEtudiants(): void {
+  public envoiEtudiants(): void {
     const c = {
       course: this.courseid,
       students: this.dataset.filter(e => e.mail !== undefined),
     };
+    console.log('OUAI OUAI OUAI' + c);
     this.blocked = true;
     this.http.post<number>(this.applicationConfigService.getEndpointFor('api/createstudentmasse'), c).subscribe(
       () => {
@@ -354,6 +361,39 @@ export class ImportStudentComponent implements OnInit {
           });
           this.dataset.splice(0);
           this.loadEtudiants();
+        });
+      },
+      err => {
+        this.blocked = false;
+        this.translate.get('scanexam.importerror').subscribe(data => {
+          this.messageService.add({
+            severity: 'error',
+            summary: data,
+            detail: JSON.stringify(err),
+          });
+        });
+      },
+    );
+  }
+
+  async envoiEtudiantDirect(ajout: Std, courseId: number): Promise<void> {
+    const payload = {
+      course: courseId,
+      students: [ajout],
+    };
+    console.log("Ajout direct de l'étudiant:", payload);
+    this.blocked = true;
+    this.http.post<number>(this.applicationConfigService.getEndpointFor('api/createstudentmasse'), payload).subscribe(
+      () => {
+        this.blocked = false;
+        this.translate.get('scanexam.importsuccess').subscribe(data => {
+          this.messageService.add({
+            severity: 'success',
+            summary: data,
+            detail: this.translate.instant('scanexam.importsuccessdetail'),
+          });
+          this.dataset.push(ajout); // Ajoutez l'étudiant au dataset local
+          this.loadEtudiantsWithID(courseId);
         });
       },
       err => {
@@ -422,6 +462,11 @@ export class ImportStudentComponent implements OnInit {
 
   loadEtudiants(): void {
     this.http.get<Array<Std>>(this.applicationConfigService.getEndpointFor('api/getstudentcours/' + this.courseid)).subscribe(s => {
+      this.students = s;
+    });
+  }
+  loadEtudiantsWithID(courseId: number): void {
+    this.http.get<Array<Std>>(this.applicationConfigService.getEndpointFor('api/getstudentcours/' + courseId)).subscribe(s => {
       this.students = s;
     });
   }

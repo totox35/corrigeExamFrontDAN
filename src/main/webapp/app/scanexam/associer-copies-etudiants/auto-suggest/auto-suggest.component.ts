@@ -1,13 +1,23 @@
 import { CommonModule } from '@angular/common';
-import { AfterViewInit, ChangeDetectorRef, Component, OnInit } from '@angular/core';
-import { FormsModule } from '@angular/forms';
+import { AfterViewInit, ChangeDetectorRef, Component, OnInit, ViewChild } from '@angular/core';
+import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { MltComponent } from 'app/scanexam/mlt/mlt.component';
-import { firstValueFrom, forkJoin, Subject } from 'rxjs';
+import { firstValueFrom, forkJoin, from, Subject } from 'rxjs';
+import { ImportStudentComponent } from 'app/scanexam/import-student/import-student.component';
+import { ActivatedRoute } from '@angular/router';
+
+interface Std {
+  ine?: string;
+  nom?: string;
+  prenom?: string;
+  mail?: string;
+  groupe?: string;
+}
 
 @Component({
   selector: 'jhi-auto-suggest',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, ImportStudentComponent],
   templateUrl: './auto-suggest.component.html',
   styleUrl: './auto-suggest.component.scss',
 })
@@ -18,6 +28,10 @@ export class AutoSuggestComponent {
   isLoading: boolean = false; // Indicateur de chargement
   error: string | null = null; // Pour gérer les erreurs
   selectedTemplate: 'autobind' | 'create' = 'create';
+  studentForm: FormGroup;
+  dataset: Std[] = []; // Dataset pour stocker les étudiants
+  @ViewChild(ImportStudentComponent) importStudentComponent!: ImportStudentComponent;
+  courseId: number;
 
   // Subject pour émettre les changements
   private suggestedValuesSubject = new Subject<{ name: string; firstName: string; ine: string }>();
@@ -28,7 +42,17 @@ export class AutoSuggestComponent {
   constructor(
     private mltcomponent: MltComponent,
     private cdr: ChangeDetectorRef,
-  ) {}
+    private fb: FormBuilder,
+    private route: ActivatedRoute,
+  ) {
+    this.studentForm = this.fb.group({
+      suggestedName: [''],
+      suggestedFirstName: [''],
+      suggestedINE: [''],
+    });
+    // Extraire l'ID du cours à partir de l'URL
+    this.courseId = +(this.route.snapshot.paramMap.get('courseId') ?? 0);
+  }
 
   emitSuggestions() {
     if (this.suggestedName && this.suggestedFirstName && this.suggestedINE) {
@@ -68,6 +92,11 @@ export class AutoSuggestComponent {
     if (this.suggestedINE) {
       this.suggestedINE = this.applyPatterns(this.suggestedINE, patterns);
     }
+    this.studentForm.patchValue({
+      suggestedName: this.suggestedName,
+      suggestedFirstName: this.suggestedFirstName,
+      suggestedINE: this.suggestedINE,
+    });
     this.cdr.detectChanges();
   }
 
@@ -95,6 +124,11 @@ export class AutoSuggestComponent {
         this.suggestedName = results[0];
         this.suggestedFirstName = results[1];
         this.suggestedINE = results[2];
+        this.studentForm.patchValue({
+          suggestedName: this.suggestedName,
+          suggestedFirstName: this.suggestedFirstName,
+          suggestedINE: this.suggestedINE,
+        });
       } else {
         throw new Error('Les résultats de l’inférence sont incomplets.');
       }
@@ -104,6 +138,30 @@ export class AutoSuggestComponent {
     } finally {
       this.emitSuggestions();
       this.isLoading = false;
+    }
+  }
+
+  async getNewStudentValues(): Promise<void> {
+    if (this.studentForm.valid) {
+      const formValues = this.studentForm.value;
+      console.log('Form Submitted', formValues);
+      const newEtudiant: Std = {
+        nom: formValues.suggestedName,
+        prenom: formValues.suggestedFirstName,
+        ine: formValues.suggestedINE,
+        mail: `${formValues.suggestedFirstName}.${formValues.suggestedName}@insa-rennes.fr`, // Utilisez les valeurs du formulaire pour construire l'adresse e-mail
+        groupe: 'G1', // Ajoutez des valeurs par défaut ou récupérez-les si disponibles
+      };
+
+      console.log('Nouvel étudiant à ajouter:', newEtudiant);
+
+      // Ajout de l'étudiant dans ImportStudentComponent
+      await firstValueFrom(from(this.importStudentComponent.envoiEtudiantDirect(newEtudiant, 7)));
+      //this.emitSuggestions();
+
+      console.log('Nouvel étudiant ajouté:', newEtudiant);
+    } else {
+      console.error('Formulaire invalide');
     }
   }
 }

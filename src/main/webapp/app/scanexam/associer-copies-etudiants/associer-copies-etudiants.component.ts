@@ -26,7 +26,7 @@ import { PreferenceService } from '../preference-page/preference.service';
 import { CacheServiceImpl } from '../db/CacheServiceImpl';
 import { ShortcutInput, KeyboardShortcutsModule } from 'ng-keyboard-shortcuts';
 import { TranslateService, TranslateModule } from '@ngx-translate/core';
-import { firstValueFrom, Subscription } from 'rxjs';
+import { firstValueFrom, lastValueFrom, Subscription } from 'rxjs';
 import { DoPredictionsInputSamePage } from 'app/opencv.worker';
 import { DialogService } from 'primeng/dynamicdialog';
 import { AllbindingsComponent } from './allbindings/allbindings.component';
@@ -328,12 +328,13 @@ export class AssocierCopiesEtudiantsComponent implements OnInit, AfterViewInit {
       if (this.predictionSubscription) {
         this.predictionSubscription.unsubscribe();
       }
-      this.predictionSubscription = this.autoSuggestComponent.suggestedValues$.subscribe(values => {
+      this.predictionSubscription = this.autoSuggestComponent.suggestedValues$.subscribe(async values => {
         this.recognizedStudent = {
           name: values.name,
           firstname: values.firstName,
           ine: values.ine,
         };
+        await this.refreshStudentList(); // Attendre que la liste des étudiants soit mise à jour
         console.log('Recognized Student mis à jour :', this.recognizedStudent);
         this.matchRecognizedStudent();
       });
@@ -609,9 +610,22 @@ export class AssocierCopiesEtudiantsComponent implements OnInit, AfterViewInit {
 
   async refreshStudentList(): Promise<void> {
     this.blocked = true;
-    const studentsbody = await firstValueFrom(this.studentService.query({ courseId: this.exam.courseId }));
-    this.students = studentsbody.body!;
-    this.studentsOptions = this.getStudentOptions();
+    try {
+      console.log('Valeur de courseID', this.exam.courseId);
+      const studentsbody = await firstValueFrom(this.studentService.query({ courseId: this.exam.courseId }));
+      this.students = studentsbody.body!;
+      this.studentsOptions = this.getStudentOptions();
+      console.log('Student refreshed', this.students);
+    } catch (error) {
+      console.error('Erreur lors du rafraîchissement de la liste des étudiants :', error);
+      this.messageService.add({
+        severity: 'error',
+        summary: 'Erreur',
+        detail: 'Une erreur est survenue lors du rafraîchissement de la liste des étudiants.',
+      });
+    } finally {
+      this.blocked = false;
+    }
   }
 
   filterLocalStudentList(): void {
@@ -1846,7 +1860,7 @@ export class AssocierCopiesEtudiantsComponent implements OnInit, AfterViewInit {
 
   async matchRecognizedStudent(): Promise<void> {
     console.log(this.recognizedStudent);
-    console.log(this.students);
+    console.log('Liste des etudiants actuel', this.students);
     if (!this.recognizedStudent || !this.students || this.students.length === 0) {
       this.messageService.add({
         severity: 'warn',

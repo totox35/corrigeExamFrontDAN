@@ -2,7 +2,7 @@
   <!-- Inclusion de Font Awesome -->
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet" />
 </head>
-
+<jhi-import-student [hidden]="true"></jhi-import-student>
 <body>
   @if (this.selectedTemplate === 'autobind') {
     <div class="parentContainer">
@@ -29,27 +29,29 @@
     </div>
   }
   @if (this.selectedTemplate === 'create') {
-    <div class="parentContainer">
-      <div class="annotationContainerCreate">
-        <i class="fas fa-robot"></i>
-        <div class="annotationContainerTextCreate">1 suggestion de création</div>
+    <form [formGroup]="studentForm" (ngSubmit)="getNewStudentValues()">
+      <div class="parentContainer">
+        <div class="annotationContainerCreate">
+          <i class="fas fa-robot"></i>
+          <div class="annotationContainerTextCreate">1 suggestion de création</div>
+        </div>
+        <div class="studentContainerCreate">
+          <div style="font-style: oblique">Etudiant :</div>
+          <div class="suggestedName" style="font-size: small">
+            <input id="suggestedName" formControlName="suggestedName" style="font-size: 12px; padding: 2px; width: 80px" />
+          </div>
+          <div class="suggestedFirstName" style="font-size: small">
+            <input id="suggestedFirstName" formControlName="suggestedFirstName" style="font-size: 12px; padding: 2px; width: 80px" />
+          </div>
+          <div class="suggestedINE" style="font-style: italic; font-size: x-small">
+            <input id="suggestedINE" formControlName="suggestedINE" style="font-size: 12px; padding: 2px; width: 60px" />
+          </div>
+          <div class="button">
+            <button type="submit" class="btn-acceptSuggest" aria-label="Accepter la suggestion">Créer l'étudiant</button>
+            <button type="button" class="btn-createSuggest" aria-label="Annuler la suggestion">Annuler</button>
+          </div>
+        </div>
       </div>
-      <div class="studentContainerCreate">
-        <div style="font-style: oblique">Etudiant :</div>
-        <div class="suggestedName" style="font-size: small">
-          <input id="suggestedName" [(ngModel)]="suggestedName" style="font-size: 12px; padding: 2px; width: 80px" />
-        </div>
-        <div class="suggestedFirstName" style="font-size: small">
-          <input id="suggestedFirstName" [(ngModel)]="suggestedFirstName" style="font-size: 12px; padding: 2px; width: 80px" />
-        </div>
-        <div class="suggestedINE" style="font-style: italic; font-size: x-small">
-          <input id="suggestedINE" [(ngModel)]="suggestedINE" style="font-size: 12px; padding: 2px; width: 60px" />
-        </div>
-        <div class="button">
-          <button class="btn-acceptSuggest" aria-label="Accepter la suggestion">Créer l'étudiant</button>
-          <button class="btn-createSuggest" aria-label="Annuler la suggestion">Annuler</button>
-        </div>
-      </div>
-    </div>
+    </form>
   }
 </body>
