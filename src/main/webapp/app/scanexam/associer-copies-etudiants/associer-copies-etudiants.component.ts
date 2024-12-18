@@ -334,10 +334,16 @@ export class AssocierCopiesEtudiantsComponent implements OnInit, AfterViewInit {
           firstname: values.firstName,
           ine: values.ine,
         };
-        await this.refreshStudentList(); // Attendre que la liste des étudiants soit mise à jour
-        console.log('Recognized Student mis à jour :', this.recognizedStudent);
-        this.matchRecognizedStudent();
+        this.refreshStudentList(); // Attendre que la liste des étudiants soit mise à jour
+        // console.log('Recognized Student mis à jour :', this.recognizedStudent);
+        // this.matchRecognizedStudent();
       });
+      this.recognizedStudent = {
+        name: this.autoSuggestComponent.suggestedName,
+        firstname: this.autoSuggestComponent.suggestedFirstName,
+        ine: this.autoSuggestComponent.suggestedINE,
+      };
+      this.matchRecognizedStudent();
     });
   }
 
@@ -1859,6 +1865,7 @@ export class AssocierCopiesEtudiantsComponent implements OnInit, AfterViewInit {
   }
 
   async matchRecognizedStudent(): Promise<void> {
+    this.autoSuggestComponent.replacePatterns();
     console.log(this.recognizedStudent);
     console.log('Liste des etudiants actuel', this.students);
     if (!this.recognizedStudent || !this.students || this.students.length === 0) {
@@ -1871,13 +1878,13 @@ export class AssocierCopiesEtudiantsComponent implements OnInit, AfterViewInit {
     }
 
     const fuse = new Fuse(this.students, {
-      keys: ['name', 'firstname'], // Les champs où chercher
+      keys: ['name', 'firstname', 'ine'], // Les champs où chercher
       threshold: 1, // Sensibilité (0 = stricte, 1 = très permissive)
       includeScore: true,
     });
 
     // Combiner nom et prénom reconnus pour la recherche
-    const recognizedFullName = `${this.recognizedStudent.name} ${this.recognizedStudent.firstname}`.trim();
+    const recognizedFullName = `${this.recognizedStudent.name} ${this.recognizedStudent.firstname} ${this.recognizedStudent.ine}`.trim();
 
     // Recherche
     const results = fuse.search(recognizedFullName);
@@ -1907,7 +1914,6 @@ export class AssocierCopiesEtudiantsComponent implements OnInit, AfterViewInit {
         });
       } else {
         this.autoSuggestComponent.setTemplate('create');
-        this.autoSuggestComponent.replacePatterns();
         this.cdr.detectChanges();
         // Si le score est moyen, demander confirmation
         this.messageService.add({

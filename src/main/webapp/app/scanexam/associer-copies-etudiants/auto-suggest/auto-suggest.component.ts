@@ -5,6 +5,7 @@ import { MltComponent } from 'app/scanexam/mlt/mlt.component';
 import { firstValueFrom, forkJoin, from, Subject } from 'rxjs';
 import { ImportStudentComponent } from 'app/scanexam/import-student/import-student.component';
 import { ActivatedRoute } from '@angular/router';
+import { MessageService } from 'primeng/api';
 
 interface Std {
   ine?: string;
@@ -18,6 +19,7 @@ interface Std {
   selector: 'jhi-auto-suggest',
   standalone: true,
   imports: [CommonModule, FormsModule, ReactiveFormsModule, ImportStudentComponent],
+  providers: [MessageService],
   templateUrl: './auto-suggest.component.html',
   styleUrl: './auto-suggest.component.scss',
 })
@@ -44,6 +46,7 @@ export class AutoSuggestComponent {
     private cdr: ChangeDetectorRef,
     private fb: FormBuilder,
     private route: ActivatedRoute,
+    public messageService: MessageService,
   ) {
     this.studentForm = this.fb.group({
       suggestedName: [''],
@@ -156,9 +159,8 @@ export class AutoSuggestComponent {
       console.log('Nouvel étudiant à ajouter:', newEtudiant);
 
       // Ajout de l'étudiant dans ImportStudentComponent
-      await firstValueFrom(from(this.importStudentComponent.envoiEtudiantDirect(newEtudiant, 7)));
+      this.importStudentComponent.envoiEtudiantDirect(newEtudiant, 7);
       //this.emitSuggestions();
-
       console.log('Nouvel étudiant ajouté:', newEtudiant);
     } else {
       console.error('Formulaire invalide');

@@ -75,8 +75,8 @@
 .container {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+  justify-content: flex-start;
+  gap: 10%;
   padding: 8px;
   border: 1px solid var(--primary-color);
   border-radius: 4px;
