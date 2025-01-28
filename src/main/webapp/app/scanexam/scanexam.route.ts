@@ -22,6 +22,7 @@ import { ComparestudentanswerComponent } from './comparestudentanswer/comparestu
 import { ExportanonymoupdfComponent } from './exportanonymoupdf/exportanonymoupdf.component';
 import { SearchanswerComponent } from './searchanswer/searchanswer.component';
 import { ImageAccessComponent } from './image-access/image-access.component';
+import { AjouterpdfComponent } from './ajouterpdf/ajouterpdf.component';
 
 // set the location of the OpenCV files
 // registerAllModules();
@@ -47,6 +48,20 @@ export const CREERCOURS_ROUTE: Route = {
   data: {
     pageTitle: 'home.creercours',
     documentation: {
+      en: 'https://correctexam.readthedocs.io/en/latest/user.html#step-1-create-your-course-and-exam-this-includes-creating-your-exam-using-a-word-processor-word-google-doc-libreoffice-or-latex',
+      fr: 'https://correctexam.readthedocs.io/fr/latest/user.html#etape-1-creer-son-cours-et-son-examen-cela-comprend-fabriquer-l-enonce-de-son-examen-a-l-aide-d-un-traitement-de-texte-word-google-doc-libreoffice-ou-de-latex',
+    },
+  },
+};
+
+export const AJOUTERPDF_ROUTE: Route = {
+  path: 'course/:courseid/ajouterpdf',
+  canActivate: [UserRouteAccessService],
+  component: AjouterpdfComponent,
+  data: {
+    pageTitle: 'home.ajouterpdf',
+    documentation: {
+      // Change those as no documentation has been produced
       en: 'https://correctexam.readthedocs.io/en/latest/user.html#step-1-create-your-course-and-exam-this-includes-creating-your-exam-using-a-word-processor-word-google-doc-libreoffice-or-latex',
       fr: 'https://correctexam.readthedocs.io/fr/latest/user.html#etape-1-creer-son-cours-et-son-examen-cela-comprend-fabriquer-l-enonce-de-son-examen-a-l-aide-d-un-traitement-de-texte-word-google-doc-libreoffice-ou-de-latex',
     },
@@ -421,6 +436,7 @@ export const SCANEXAM_ROUTES = [
   EXPORTPDFBYSHEET_ROUTE,
   CompareHybridCommentAnswer_ROUTE,
   SearchAnswer_ROUTE,
+  AJOUTERPDF_ROUTE,
   // MLT_ROUTE,
   // ImageAccess_ROUTE,
 ];

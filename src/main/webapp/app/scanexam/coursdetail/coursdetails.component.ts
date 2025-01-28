@@ -245,6 +245,12 @@ export class CoursdetailsComponent implements OnInit {
         route: '/creerexam/' + this.courseId,
       },
       {
+        label: this.translateService.instant('scanexam.ajouterpdf'),
+        icon: this.appConfig.getFrontUrl() + 'content/images/pdf-file.svg',
+        title: this.translateService.instant('scanexam.ajouterpdf'),
+        route: '/ajouterpdf/' + this.courseId,
+      },
+      {
         label: this.translateService.instant('scanexam.enregistreretudiant'),
         icon: this.appConfig.getFrontUrl() + 'content/images/students.svg',
         title: this.translateService.instant('scanexam.enregistreretudiant'),

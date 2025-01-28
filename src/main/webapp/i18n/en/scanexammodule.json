@@ -509,6 +509,9 @@
     "rundanscript": "Run DAN handwriting recognition script",
     "handwritingrecognition": "Handwriting recognition",
     "examanswerresearch": "Search answers",
-    "examanswerresearchdetail": "Allows you to search for answers across all copies"
+    "examanswerresearchdetail": "Allows you to search for answers across all copies",
+    "ajouterpdf": "Manage PDF",
+    "coursepdfupload": "Upload course PDF",
+    "pdfname": "Name of PDF"
   }
 }

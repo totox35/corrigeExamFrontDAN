@@ -1,0 +1,45 @@
+<p>Hiiiiii</p>
+
+<div class="grid">
+  <p-toast></p-toast>
+  <p-blockUI [blocked]="blocked">
+    <p-progressSpinner></p-progressSpinner>
+  </p-blockUI>
+
+  <div class="sm:col-12 md:col-12 lg:col-8 xl:col-8">
+    <h2 jhiTranslate="scanexam.ajouterpdf" [translateValues]="{ courseName: coursName }">Ajouter un PDF pour le cours {{ coursName }}</h2>
+
+    <form name="ajouterPdfForm" novalidate (ngSubmit)="save()" [formGroup]="ajouterPdfForm">
+      <div class="row">
+        <label jhiTranslate="scanexam.pdfname" for="field_pdfTitle">Nom du PDF</label>
+        <input type="text" id="field_pdfTitle" formControlName="pdfTitle" />
+        <div *ngIf="ajouterPdfForm.get('pdfTitle')?.invalid && ajouterPdfForm.get('pdfTitle')?.touched">
+          <small jhiTranslate="entity.validation.required">Ce champ est requis.</small>
+        </div>
+      </div>
+
+      <div class="row">
+        <label jhiTranslate="scanexam.coursepdfupload" for="file_pdfFile">Fichier PDF</label>
+        <input type="file" id="file_pdfFile" accept=".pdf" (change)="setFileData($event, 'pdfFile')" jhiTranslate="entity.action.addblob" />
+      </div>
+
+      <button type="button" (click)="gotoUE()" class="btn btn-secondary">
+        <fa-icon icon="arrow-left"></fa-icon>&nbsp;<span jhiTranslate="entity.action.cancel">Annuler</span>
+      </button>
+      <button type="submit" [disabled]="ajouterPdfForm.invalid || isSaving" class="btn btn-primary">
+        <fa-icon icon="save"></fa-icon>&nbsp;<span jhiTranslate="entity.action.save">Sauvegarder</span>
+      </button>
+    </form>
+
+    <div class="row" *ngIf="ajouterPdfForm.get('pdfFile')?.value">
+      <ngx-extended-pdf-viewer
+        [base64Src]="ajouterPdfForm.get('pdfFile')?.value"
+        [textLayer]="true"
+        [height]="'95%'"
+        [showToolbar]="false"
+        (pdfLoadingFailed)="onPdfError()"
+        (pdfLoaded)="onPdfLoaded()"
+      ></ngx-extended-pdf-viewer>
+    </div>
+  </div>
+</div>
