@@ -55,10 +55,11 @@ export const CREERCOURS_ROUTE: Route = {
 };
 
 export const AJOUTERPDF_ROUTE: Route = {
-  path: 'course/:courseid/ajouterpdf',
+  path: 'ajouterpdf/:courseid',
   canActivate: [UserRouteAccessService],
   component: AjouterpdfComponent,
   data: {
+    authorities: ['ROLE_USER'],
     pageTitle: 'home.ajouterpdf',
     documentation: {
       // Change those as no documentation has been produced
