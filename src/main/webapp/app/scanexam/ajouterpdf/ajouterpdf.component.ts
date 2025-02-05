@@ -118,12 +118,11 @@ export class AjouterpdfComponent implements OnInit, AfterViewInit {
   save(): void {
     this.isSaving = true;
     const pdfData = {
-      title: this.ajouterPdfForm.get(['pdfTitle'])!.value,
       content: this.ajouterPdfForm.get(['pdfFile'])!.value,
       contentContentType: this.ajouterPdfForm.get(['pdfFileContentType'])!.value,
     };
 
-    this.pdfService.addPdf(pdfData, this.courseid!).subscribe({
+    this.pdfService.addPdf(this.ajouterPdfForm.get(['pdfTitle'])!.value, pdfData, this.courseid!).subscribe({
       next: () => {
         this.isSaving = false;
         this.gotoUE();
