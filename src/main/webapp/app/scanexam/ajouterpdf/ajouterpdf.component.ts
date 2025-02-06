@@ -71,7 +71,7 @@ export class AjouterpdfComponent implements OnInit, AfterViewInit {
       if (id !== null) {
         this.courseid = id;
         this.courseService.find(+this.courseid).subscribe(c => {
-          this.coursName = c.body?.name ?? '';
+          this.coursName = c.body?.name ?? ''; // Course name is an unique id !
           this.updateTitle();
           this.translateService.onLangChange.subscribe(() => {
             this.updateTitle();
