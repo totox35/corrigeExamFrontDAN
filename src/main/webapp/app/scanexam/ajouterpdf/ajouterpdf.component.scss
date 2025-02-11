@@ -11,3 +11,36 @@ button {
   font-weight: bold;
   color: red;
 }
+
+.container {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  margin: 10px;
+}
+
+.pdf-management {
+  display: flex;
+  flex-direction: row;
+  flex: 3;
+  justify-content: space-evenly;
+  width: 40%;
+}
+
+.pdf-form {
+  display: flex;
+  flex-direction: column;
+}
+
+.pdf-list {
+  flex: 1;
+  margin-left: 20px;
+}
+
+.pdf-viewer {
+  margin-top: 20px;
+}
+
+.form {
+  width: 100%;
+}

@@ -21,8 +21,17 @@ export class PdfService {
 
   deleteChunks(pdfName?: string): Observable<any> {
     const payload = {
-      pdfName: pdfName || '', // If pdfName is undefined or null, default to an empty string
+      pdfName, // If pdfName is undefined or null, default to an empty string
     };
     return this.http.post(this.resourceUrl + '/delete-chunks', payload);
+  }
+
+  getAllPdfNames(courseName: string): Observable<any> {
+    const payload = {
+      courseName,
+    };
+    // eslint-disable-next-line no-console
+    console.log(courseName);
+    return this.http.post(this.resourceUrl + '/get-pdf-names', payload);
   }
 }

@@ -44,6 +44,8 @@ export class AjouterpdfComponent implements OnInit, AfterViewInit {
   faDownload = faDownload;
   ajouterPdfForm: UntypedFormGroup;
   errorParsingPdf = false;
+  fileName: string = '';
+  pdfNames: string[] = [];
 
   constructor(
     protected activatedRoute: ActivatedRoute,
@@ -71,7 +73,7 @@ export class AjouterpdfComponent implements OnInit, AfterViewInit {
       if (id !== null) {
         this.courseid = id;
         this.courseService.find(+this.courseid).subscribe(c => {
-          this.coursName = c.body?.name ?? ''; // Course name is an unique id !
+          this.coursName = c.body?.name ?? '';
           this.updateTitle();
           this.translateService.onLangChange.subscribe(() => {
             this.updateTitle();
@@ -79,6 +81,19 @@ export class AjouterpdfComponent implements OnInit, AfterViewInit {
         });
       }
     });
+
+    //console.log("The course id is" + this.courseid)
+    this.loadPdfNames();
+  }
+
+  loadPdfNames(): void {
+    if (this.courseid) {
+      this.pdfService.getAllPdfNames(this.courseid).subscribe(response => {
+        this.pdfNames = response.output.split('\n').filter((name: string) => name.trim() !== '');
+      });
+    } else {
+      console.error('courseid is missing');
+    }
   }
 
   updateTitle(): void {
@@ -90,7 +105,7 @@ export class AjouterpdfComponent implements OnInit, AfterViewInit {
   }
 
   ngAfterViewInit(): void {
-    this.ajouterPdfForm.markAllAsTouched(); // Mark all fields as touched for validation
+    this.ajouterPdfForm.markAllAsTouched();
   }
 
   gotoUE(): void {
@@ -99,30 +114,40 @@ export class AjouterpdfComponent implements OnInit, AfterViewInit {
     }
   }
 
-  byteSize(base64String: string): string {
-    return this.dataUtils.byteSize(base64String);
-  }
-
-  openFile(base64String: string, contentType: string | null | undefined): void {
-    this.dataUtils.openFile(base64String, contentType);
-  }
-
   setFileData(event: Event, field: string): void {
     this.dataUtils.loadFileToForm(event, this.ajouterPdfForm, field, false).subscribe({
+      next: () => {
+        const input = event.target as HTMLInputElement;
+        if (input.files && input.files.length > 0) {
+          const file = input.files[0];
+          this.fileName = file.name.replace('.pdf', '');
+          if (!this.ajouterPdfForm.get('pdfTitle')?.value) {
+            this.ajouterPdfForm.patchValue({ pdfTitle: this.fileName });
+          }
+        }
+      },
       error: (err: FileLoadError) => {
         this.eventManager.broadcast(new EventWithContent<AlertError>('gradeScopeIsticApp.error', { ...err, key: 'error.file.' + err.key }));
       },
     });
   }
 
+  updatePdfName(): void {
+    const title = this.ajouterPdfForm.get('pdfTitle')?.value;
+    if (title) {
+      this.fileName = title;
+    }
+  }
+
   save(): void {
     this.isSaving = true;
+    const pdfTitle = this.ajouterPdfForm.get('pdfTitle')?.value || this.fileName;
     const pdfData = {
       content: this.ajouterPdfForm.get(['pdfFile'])!.value,
       contentContentType: this.ajouterPdfForm.get(['pdfFileContentType'])!.value,
     };
 
-    this.pdfService.addPdf(this.ajouterPdfForm.get(['pdfTitle'])!.value, pdfData, this.courseid!).subscribe({
+    this.pdfService.addPdf(pdfTitle, pdfData, this.courseid!).subscribe({
       next: () => {
         this.isSaving = false;
         this.gotoUE();
