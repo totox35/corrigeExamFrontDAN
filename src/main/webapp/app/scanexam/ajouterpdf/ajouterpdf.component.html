@@ -49,7 +49,12 @@
     <div class="pdf-list-container">
       <h3>Liste des PDF</h3>
       <ul>
-        <li *ngFor="let pdfName of pdfNames">{{ pdfName }}</li>
+        <li *ngFor="let pdfName of pdfNames">
+          <button type="button" (click)="delete(pdfName)" class="btn btn-danger btn-sm">
+            <fa-icon icon="trash"></fa-icon>&nbsp;<span jhiTranslate="entity.action.delete">Supprimer</span>
+          </button>
+          {{ pdfName }}
+        </li>
       </ul>
     </div>
   </div>

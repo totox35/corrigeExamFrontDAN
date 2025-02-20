@@ -19,8 +19,9 @@ export class PdfService {
     return this.http.post(this.resourceUrl + '/add-pdf', payload);
   }
 
-  deleteChunks(pdfName?: string): Observable<any> {
+  deleteChunks(courseName: string, pdfName?: string): Observable<any> {
     const payload = {
+      courseName,
       pdfName, // If pdfName is undefined or null, default to an empty string
     };
     return this.http.post(this.resourceUrl + '/delete-chunks', payload);

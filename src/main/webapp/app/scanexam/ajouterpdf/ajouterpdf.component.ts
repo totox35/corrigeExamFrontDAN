@@ -81,8 +81,6 @@ export class AjouterpdfComponent implements OnInit, AfterViewInit {
         });
       }
     });
-
-    //console.log("The course id is" + this.courseid)
     this.loadPdfNames();
   }
 
@@ -136,6 +134,21 @@ export class AjouterpdfComponent implements OnInit, AfterViewInit {
     const title = this.ajouterPdfForm.get('pdfTitle')?.value;
     if (title) {
       this.fileName = title;
+    }
+  }
+
+  delete(pdfName?: string): void {
+    if (this.courseid) {
+      this.pdfService.deleteChunks(this.courseid, pdfName).subscribe({
+        next: () => {
+          this.loadPdfNames();
+        },
+        error(err) {
+          console.error('Error during deletion of pdf : ' + pdfName + '\n' + err);
+        },
+      });
+    } else {
+      console.error('courseid is missing');
     }
   }
 
