@@ -316,7 +316,7 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
   noteStep = 0;
   filterPredictionsWithNotes: boolean = false;
 
-  developementMode: boolean = false;
+  developementMode: boolean = true;
 
   constructor(
     public examService: ExamService,

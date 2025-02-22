@@ -5,6 +5,6 @@
     "types": [],
     "isolatedModules": true
   },
-  "files": ["src/main/webapp/main.ts", "src/main/webapp/polyfills.ts"],
+  "files": ["src/main/webapp/main.ts", "src/main/webapp/polyfills.ts", "src/main/webapp/app/scanexam/image-access/prediction_worker.ts"],
   "include": ["src/main/webapp/**/*.d.ts"]
 }
