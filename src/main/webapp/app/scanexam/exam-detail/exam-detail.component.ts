@@ -33,7 +33,7 @@ import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { BlockUIModule } from 'primeng/blockui';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { TooltipModule } from 'primeng/tooltip';
-import { NgIf } from '@angular/common';
+import { CommonModule, NgIf } from '@angular/common';
 import { DockModule } from 'primeng/dock';
 import { ButtonDirective } from 'primeng/button';
 import { FormsModule } from '@angular/forms';
@@ -42,12 +42,13 @@ import { DialogModule } from 'primeng/dialog';
 import { ToastModule } from 'primeng/toast';
 import { ImageAccessComponent } from '../image-access/image-access.component';
 import { MltComponent } from '../mlt/mlt.component';
+import { PredictionHandlerService } from '../image-access/prediction-handler.service';
 
 @Component({
   selector: 'jhi-exam-detail',
   templateUrl: './exam-detail.component.html',
   styleUrls: ['./exam-detail.component.scss'],
-  providers: [ConfirmationService, MessageService, ImageAccessComponent, MltComponent],
+  providers: [ConfirmationService, MessageService, ImageAccessComponent, MltComponent, CommonModule],
   standalone: true,
   imports: [
     ToastModule,
@@ -122,7 +123,7 @@ export class ExamDetailComponent implements OnInit, CacheUploadNotification, Cac
     private db: CacheServiceImpl,
     private preferenceService: PreferenceService,
     private titleService: Title,
-    private imageAccessComponent: ImageAccessComponent,
+    private predictionHandler: PredictionHandlerService,
   ) {}
   setShowAlignement(v: boolean): void {
     this.showAlignement = v;
@@ -292,9 +293,8 @@ export class ExamDetailComponent implements OnInit, CacheUploadNotification, Cac
                 this.sheets.length === this.numberPagesInScan / this.nbreFeuilleParCopie && this.showAssociation && this.showAlignement;
 
               if (this.showCorrection || this.showAssociation) {
-                this.imageAccessComponent.examId = this.examId;
                 console.log('I start creating the predictions');
-                await this.imageAccessComponent.loadImages(this.examId);
+                await this.predictionHandler.handlePredictions(this.examId);
               }
 
               this.examService.getExamStatusFinish(+this.examId).then(res => {

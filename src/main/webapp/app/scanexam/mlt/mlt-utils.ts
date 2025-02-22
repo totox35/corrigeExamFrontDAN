@@ -115,7 +115,7 @@ export async function initializeOrt(): Promise<void> {
     ort.env.wasm.wasmPaths = '/public/';
     ort.env.wasm.numThreads = 1; // Set WebAssembly threads
     ort.env.wasm.proxy = false; // Disable proxy if not required
-    console.log('ONNX Runtime initialized');
+    //console.log('ONNX Runtime initialized');
   } catch (error) {
     console.error('Error initializing ONNX Runtime:', error);
   }
@@ -200,11 +200,14 @@ export async function preprocessImage(
   const batchedImage = paddedImage.expandDims(0);
 
   // Vérifiez les dimensions avant d'ajouter une dimension channel
-  console.log('Dimensions avant ajout de la dimension channel:', batchedImage.shape);
+  //console.log('Dimensions avant ajout de la dimension channel:', batchedImage.shape);
 
   // Ajoute une dimension channel si nécessaire
-  const finalImage = batchedImage.expandDims(-1);
-  console.log('Dimensions après ajout de la dimension channel:', finalImage.shape);
+  let finalImage = batchedImage;
+  if (batchedImage.shape.length === 3) {
+    finalImage = batchedImage.expandDims(-1);
+  }
+  //console.log('Dimensions après ajout de la dimension channel:', finalImage.shape);
 
   return finalImage;
 }
@@ -222,14 +225,14 @@ export async function runInference(imageTensor: Tensor, modelPath: string): Prom
   });
 
   // Prépare l'entrée pour le modèle ONNX
-  console.log('Dimensions avant expandDims:', imageTensor.shape);
+  //console.log('Dimensions avant expandDims:', imageTensor.shape);
 
   // Ajoute une dimension batch si nécessaire
   let inputImage = imageTensor;
   if (inputImage.shape.length === 3) {
     inputImage = inputImage.expandDims(0);
   }
-  console.log('Dimensions après expandDims:', inputImage.shape);
+  //console.log('Dimensions après expandDims:', inputImage.shape);
 
   // Vérifiez que le tenseur a 4 dimensions avant d'appeler transpose
   if (inputImage.shape.length !== 4) {
@@ -237,7 +240,7 @@ export async function runInference(imageTensor: Tensor, modelPath: string): Prom
   }
 
   const transposedImage = inputImage.transpose([0, 3, 1, 2]);
-  console.log('Dimensions après transpose:', transposedImage.shape);
+  //console.log('Dimensions après transpose:', transposedImage.shape);
 
   const imageWidth = tf.scalar(transposedImage.shape[3] ?? 0, 'int32');
 

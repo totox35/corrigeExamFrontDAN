@@ -42,7 +42,6 @@ async function convertImageDataToBase64(imageData: ImageData): Promise<string> {
 
 // Vérifie si une prédiction existe déjà pour la question et l'étudiant
 async function getPrediction(questionId: number, studentId: number, authToken?: string): Promise<string | null> {
-  console.log('Worker: getPrediction called with authToken =', authToken);
   const response = await fetch(`/api/predictions?questionId=${questionId}&studentId=${studentId}`, {
     method: 'GET',
     headers: {
@@ -180,12 +179,15 @@ self.onmessage = async (event: MessageEvent<PredictionTask>) => {
       for (const refinedLine of refinedLines) {
         const base64Line = 'data:image/png;base64,' + refinedLine;
         const lineResult = await executeMLT(base64Line, task.authToken);
-        predictionText += lineResult + '\n';
+        if (lineResult) {
+          predictionText += lineResult + '\n';
+        }
       }
       predictionText = predictionText.trim();
       await updatePrediction(predictionId, predictionText, task);
     } else {
       predictionText = 'No prediction available';
+      await updatePrediction(predictionId, predictionText, task);
     }
     self.postMessage({ studentId: examPageImage.studentIndex, questionId: examPageImage.questionId, prediction: predictionText });
   } catch (error) {
