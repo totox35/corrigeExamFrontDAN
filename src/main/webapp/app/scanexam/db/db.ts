@@ -65,32 +65,6 @@ export class ExamIndexDB extends Dexie {
 
   async removeElementForExam() {
     return this.delete();
-    /*  await this.transaction('rw', 'exams', 'templates', 'alignImages', 'nonAlignImages', () => {
-      this.exams.delete(this.examId);
-
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-      this.templates
-        .where('examId')
-        .equals(this.examId)
-        .toArray()
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-        .then(templates => this.templates.bulkDelete(templates.map(t => t.id!)));
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-      this.alignImages
-        .where('examId')
-        .equals(this.examId)
-        .toArray()
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-        .then(a => this.alignImages.bulkDelete(a.map(t => t.id!)));
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-      this.nonAlignImages
-        .where('examId')
-        .equals(this.examId)
-        .toArray()
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-        .then(a => this.nonAlignImages.bulkDelete(a.map(t => t.id!)));
-      //      this.populate();
-    });*/
   }
 
   async removePageAlignForExam() {
@@ -108,18 +82,16 @@ export class ExamIndexDB extends Dexie {
 
   async removeElementForExamForPages(pageStart: number, pageEnd: number) {
     await this.transaction('rw', 'exams', 'templates', 'alignImages', 'nonAlignImages', () => {
-      //      this.exams.delete(this.examId);
-
       this.alignImages
-        .where({ examId: this.examId })
-        .filter(e2 => e2.pageNumber >= pageStart && e2.pageNumber <= pageEnd)
+        .where(['examId', 'pageNumber'])
+        .between([this.examId, pageStart], [this.examId, pageEnd], true, true)
         .toArray()
 
         .then(a => this.alignImages.bulkDelete(a.map(t => t.id!)));
 
       this.nonAlignImages
-        .where({ examId: this.examId })
-        .filter(e2 => e2.pageNumber >= pageStart && e2.pageNumber <= pageEnd)
+        .where(['examId', 'pageNumber'])
+        .between([this.examId, pageStart], [this.examId, pageEnd], true, true)
         .toArray()
 
         .then(a => this.nonAlignImages.bulkDelete(a.map(t => t.id!)));
@@ -128,46 +100,32 @@ export class ExamIndexDB extends Dexie {
 
   async removePageAlignForExamForPage(page: number) {
     await this.transaction('rw', 'exams', 'templates', 'alignImages', 'nonAlignImages', () => {
-      //      this.exams.delete(this.examId);
-
       this.alignImages.where({ examId: this.examId, pageNumber: page }).delete();
-
-      // .then(a => this.alignImages.delete(a!.id!));
     });
   }
 
   async removePageNonAlignForExamForPage(page: number) {
     await this.transaction('rw', 'exams', 'templates', 'alignImages', 'nonAlignImages', () => {
-      //      this.exams.delete(this.examId);
-
       this.nonAlignImages.where({ examId: this.examId, pageNumber: page }).delete();
-
-      // .then(a => this.alignImages.delete(a!.id!));
     });
   }
 
   async removePageAlignForExamForPages(pageStart: number, pageEnd: number) {
     await this.transaction('rw', 'exams', 'templates', 'alignImages', 'nonAlignImages', () => {
-      //      this.exams.delete(this.examId);
-
       this.alignImages
-        .where({ examId: this.examId })
-        .filter(e2 => e2.pageNumber >= pageStart && e2.pageNumber <= pageEnd)
+        .where(['examId', 'pageNumber'])
+        .between([this.examId, pageStart], [this.examId, pageEnd], true, true)
         .toArray()
-
         .then(a => this.alignImages.bulkDelete(a.map(t => t.id!)));
     });
   }
 
   async removePageNonAlignForExamForPages(pageStart: number, pageEnd: number) {
     await this.transaction('rw', 'exams', 'templates', 'alignImages', 'nonAlignImages', () => {
-      //      this.exams.delete(this.examId);
-
       this.nonAlignImages
-        .where({ examId: this.examId })
-        .filter(e2 => e2.pageNumber >= pageStart && e2.pageNumber <= pageEnd)
+        .where(['examId', 'pageNumber'])
+        .between([this.examId, pageStart], [this.examId, pageEnd], true, true)
         .toArray()
-
         .then(a => this.nonAlignImages.bulkDelete(a.map(t => t.id!)));
     });
   }
@@ -217,31 +175,34 @@ export class ExamIndexDB extends Dexie {
   async getFirstTemplate(pageInscan: number) {
     return await this.templates.where({ examId: this.examId, pageNumber: pageInscan }).first();
   }
+  async getAllTemplate() {
+    return await this.templates.where({ examId: this.examId }).sortBy('pageNumber');
+  }
 
   async getNonAlignImageBetweenAndSortByPageNumber(p1: number, p2: number) {
     return await this.nonAlignImages
-      .where({ examId: this.examId })
-      .filter(e2 => e2.pageNumber >= p1 && e2.pageNumber <= p2)
+      .where(['examId', 'pageNumber'])
+      .between([this.examId, p1], [this.examId, p2], true, true)
       .sortBy('pageNumber');
   }
 
   async getAlignImageBetweenAndSortByPageNumber(p1: number, p2: number) {
     return await this.alignImages
-      .where({ examId: this.examId })
-      .filter(e2 => e2.pageNumber >= p1 && e2.pageNumber <= p2)
+      .where(['examId', 'pageNumber'])
+      .between([this.examId, p1], [this.examId, p2], true, true)
       .sortBy('pageNumber');
   }
 
   async getNonAlignImagesForPageNumbers(pages: number[]) {
     return await this.nonAlignImages
-      .where({ examId: this.examId })
-      .filter(e2 => pages.includes(e2.pageNumber))
+      .where(['examId', 'pageNumber'])
+      .anyOf(pages.map(p => [this.examId, p]))
       .sortBy('pageNumber');
   }
   async getAlignImagesForPageNumbers(pages: number[]) {
     return await this.alignImages
-      .where({ examId: this.examId })
-      .filter(e2 => pages.includes(e2.pageNumber))
+      .where(['examId', 'pageNumber'])
+      .anyOf(pages.map(p => [this.examId, p]))
       .sortBy('pageNumber');
   }
 
@@ -251,66 +212,153 @@ export class ExamIndexDB extends Dexie {
 
   async moveNonAlignPages(from: number, to: number) {
     if (from !== to) {
-      await this.nonAlignImages
-        .where({ examId: this.examId })
-        .filter(e2 => e2.pageNumber === from)
-        .modify(i => {
-          i.pageNumber = -1000; // (very approximate formula...., but anyway...)
-        });
+      await this.nonAlignImages.where({ examId: this.examId, pageNumber: from }).modify(i => {
+        i.pageNumber = -1000;
+      });
+
       if (from < to) {
         await this.nonAlignImages
-          .where({ examId: this.examId })
-          .filter(e2 => e2.pageNumber > from && e2.pageNumber <= to)
+          .where(['examId', 'pageNumber'])
+          .between([this.examId, from], [this.examId, to], false, true)
           .modify(i => {
             i.pageNumber = i.pageNumber - 1;
           });
       } else {
         await this.nonAlignImages
-          .where({ examId: this.examId })
-          .filter(e2 => e2.pageNumber < from && e2.pageNumber >= to)
+          .where(['examId', 'pageNumber'])
+          .between([this.examId, to], [this.examId, from], true, false)
           .modify(i => {
             i.pageNumber = i.pageNumber + 1;
           });
       }
-      await this.nonAlignImages
-        .where({ examId: this.examId })
-        .filter(e2 => e2.pageNumber === -1000)
-        .modify(i => {
-          i.pageNumber = to;
-        });
+      await this.nonAlignImages.where({ examId: this.examId, pageNumber: -1000 }).modify(i => {
+        i.pageNumber = to;
+      });
     }
   }
 
   async moveAlignPages(from: number, to: number) {
     if (from !== to) {
-      await this.alignImages
-        .where({ examId: this.examId, pageNumber: from })
-        //        .filter(e2 => e2.pageNumber === from)
-        .modify(i => {
-          i.pageNumber = -1000;
-        });
+      await this.alignImages.where({ examId: this.examId, pageNumber: from }).modify(i => {
+        i.pageNumber = -1000;
+      });
+
       if (from < to) {
         await this.alignImages
-          .where({ examId: this.examId })
-          .filter(e2 => e2.pageNumber > from && e2.pageNumber <= to)
+          .where(['examId', 'pageNumber'])
+          .between([this.examId, from], [this.examId, to], false, true)
           .modify(i => {
             i.pageNumber = i.pageNumber - 1;
           });
       } else {
         await this.alignImages
-          .where({ examId: this.examId })
-          .filter(e2 => e2.pageNumber < from && e2.pageNumber >= to)
+          .where(['examId', 'pageNumber'])
+          .between([this.examId, to], [this.examId, from], true, false)
           .modify(i => {
             i.pageNumber = i.pageNumber + 1;
           });
       }
-      await this.alignImages
-        .where({ examId: this.examId, pageNumber: -1000 })
-        //        .filter(e2 => e2.pageNumber === -1000)
-        .modify(i => {
-          i.pageNumber = to;
-        });
+      await this.alignImages.where({ examId: this.examId, pageNumber: -1000 }).modify(i => {
+        i.pageNumber = to;
+      });
     }
+  }
+  compareNumbers(a: number, b: number) {
+    return a - b;
+  }
+
+  async removePageAlignForExamForPagesAndReorder(pages: number[]) {
+    const totalpage = await this.alignImages.where('examId').equals(this.examId).count();
+    await this.transaction('rw', 'exams', 'templates', 'alignImages', 'nonAlignImages', async () => {
+      const arr = await this.alignImages
+        .where(['examId', 'pageNumber'])
+        .anyOf(pages.map(p => [this.examId, p]))
+        .toArray();
+      await this.alignImages.bulkDelete(arr.map(t => t.id!));
+      console.error('delete all image');
+    });
+    console.error('start of moving');
+
+    const pagesorder = pages.sort(this.compareNumbers);
+    for (let i = 0; i < pages.length; i++) {
+      let max = totalpage;
+      let keepuper = true;
+      if (i < pagesorder.length - 1) {
+        max = pagesorder[i + 1];
+        keepuper = false;
+      }
+      const min = pagesorder[i];
+      if (min !== max) {
+        await this.alignImages
+          .where(['examId', 'pageNumber'])
+          .between([this.examId, min], [this.examId, max], false, keepuper)
+          .modify(k => {
+            k.pageNumber = k.pageNumber - (i + 1);
+          });
+      }
+    }
+  }
+
+  async removePageNonAlignForExamForPagesAndReorder(pages: number[]) {
+    const totalpage = await this.nonAlignImages.where('examId').equals(this.examId).count();
+    await this.transaction('rw', 'exams', 'templates', 'alignImages', 'nonAlignImages', async () => {
+      const arr = await this.nonAlignImages
+        .where(['examId', 'pageNumber'])
+        .anyOf(pages.map(p => [this.examId, p]))
+        .toArray();
+      await this.nonAlignImages.bulkDelete(arr.map(t => t.id!));
+    });
+
+    const pagesorder = pages.sort(this.compareNumbers);
+    for (let i = 0; i < pages.length; i++) {
+      let max = totalpage;
+      let keepuper = true;
+      if (i < pagesorder.length - 1) {
+        max = pagesorder[i + 1];
+        keepuper = false;
+      }
+      const min = pagesorder[i];
+      if (min !== max) {
+        await this.nonAlignImages
+          .where(['examId', 'pageNumber'])
+          .between([this.examId, min], [this.examId, max], false, keepuper)
+          .modify(k => {
+            k.pageNumber = k.pageNumber - (i + 1);
+          });
+      }
+    }
+  }
+  async moveTemplatePages(from: number, to: number) {
+    if (from !== to) {
+      await this.templates.where({ examId: this.examId, pageNumber: from }).modify(i => {
+        i.pageNumber = -1000;
+      });
+
+      if (from < to) {
+        await this.templates
+          .where(['examId', 'pageNumber'])
+          .between([this.examId, from], [this.examId, to], false, true)
+          .modify(i => {
+            i.pageNumber = i.pageNumber - 1;
+          });
+      } else {
+        await this.templates
+          .where(['examId', 'pageNumber'])
+          .between([this.examId, to], [this.examId, from], true, false)
+          .modify(i => {
+            i.pageNumber = i.pageNumber + 1;
+          });
+      }
+      await this.templates.where({ examId: this.examId, pageNumber: -1000 }).modify(i => {
+        i.pageNumber = to;
+      });
+    }
+  }
+
+  async removePageTemplateForExamForPage(page: number) {
+    await this.transaction('rw', 'exams', 'templates', 'alignImages', 'nonAlignImages', () => {
+      this.templates.where({ examId: this.examId, pageNumber: page }).delete();
+    });
   }
 
   async getAlignSortByPageNumber() {
@@ -531,6 +579,14 @@ export class AppDB implements CacheService {
     }
     return db1.getFirstTemplate(pageInscan);
   }
+  async getAllTemplate(examId: number): Promise<Template[] | undefined> {
+    let db1 = this.dbs.get(examId);
+    if (db1 === undefined) {
+      db1 = new ExamIndexDB(examId);
+      this.dbs.set(examId, db1);
+    }
+    return db1.getAllTemplate();
+  }
 
   async getNonAlignImageBetweenAndSortByPageNumber(examId: number, p1: number, p2: number): Promise<NonAlignImage[]> {
     let db1 = this.dbs.get(examId);
@@ -636,6 +692,41 @@ export class AppDB implements CacheService {
     }
     return db1.moveAlignPages(from, to);
   }
+
+  removePageAlignForExamForPagesAndReorder(examId: number, pages: number[]): Promise<void> {
+    let db1 = this.dbs.get(examId);
+    if (db1 === undefined) {
+      db1 = new ExamIndexDB(examId);
+      this.dbs.set(examId, db1);
+    }
+    return db1.removePageAlignForExamForPagesAndReorder(pages);
+  }
+  removePageNonAlignForExamForPagesAndReorder(examId: number, pages: number[]): Promise<void> {
+    let db1 = this.dbs.get(examId);
+    if (db1 === undefined) {
+      db1 = new ExamIndexDB(examId);
+      this.dbs.set(examId, db1);
+    }
+    return db1.removePageNonAlignForExamForPagesAndReorder(pages);
+  }
+
+  moveTemplatePages(examId: number, pageNumber: number, lastPage: number): Promise<void> {
+    let db1 = this.dbs.get(examId);
+    if (db1 === undefined) {
+      db1 = new ExamIndexDB(examId);
+      this.dbs.set(examId, db1);
+    }
+    return db1.moveTemplatePages(pageNumber, lastPage);
+  }
+
+  removePageTemplateForExamForPage(examId: number, lastPage: number): Promise<void> {
+    let db1 = this.dbs.get(examId);
+    if (db1 === undefined) {
+      db1 = new ExamIndexDB(examId);
+      this.dbs.set(examId, db1);
+    }
+    return db1.removePageTemplateForExamForPage(lastPage);
+  }
 }
 
 export interface CacheService {
@@ -660,6 +751,7 @@ export interface CacheService {
   getFirstNonAlignImage(examId: number, pageInscan: number): Promise<ImageDB | undefined>;
   getFirstAlignImage(examId: number, pageInscan: number): Promise<ImageDB | undefined>;
   getFirstTemplate(examId: number, pageInscan: number): Promise<Template | undefined>;
+  getAllTemplate(examId: number): Promise<Template[] | undefined>;
   getNonAlignImageBetweenAndSortByPageNumber(examId: number, p1: number, p2: number): Promise<ImageDB[]>;
   getAlignImageBetweenAndSortByPageNumber(examId: number, p1: number, p2: number): Promise<ImageDB[]>;
   getNonAlignImagesForPageNumbers(examId: number, pages: number[]): Promise<ImageDB[]>;
@@ -673,6 +765,11 @@ export interface CacheService {
   countAlignWithPageNumber(examId: number, pageInscan: number): Promise<number>;
   moveAlignPages(examId: number, from: number, to: number): Promise<void>;
   moveNonAlignPages(examId: number, from: number, to: number): Promise<void>;
+
+  removePageAlignForExamForPagesAndReorder(examId: number, pages: number[]): Promise<void>;
+  removePageNonAlignForExamForPagesAndReorder(examId: number, pages: number[]): Promise<void>;
+  moveTemplatePages(examId: number, pageNumber: number, lastPage: number): Promise<void>;
+  removePageTemplateForExamForPage(examId: number, lastPage: number): Promise<void>;
 }
 
 export const db = new AppDB();

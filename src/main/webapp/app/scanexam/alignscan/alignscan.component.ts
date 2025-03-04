@@ -34,7 +34,7 @@ import { TooltipModule } from 'primeng/tooltip';
 import { FormsModule } from '@angular/forms';
 import { SliderModule } from 'primeng/slider';
 import { TranslateDirective } from '../../shared/language/translate.directive';
-import { SidebarModule } from 'primeng/sidebar';
+import { DrawerModule } from 'primeng/drawer';
 import { NgIf, DecimalPipe } from '@angular/common';
 import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { BlockUIModule } from 'primeng/blockui';
@@ -61,7 +61,7 @@ export interface IPage {
     BlockUIModule,
     ProgressSpinnerModule,
     NgIf,
-    SidebarModule,
+    DrawerModule,
     TranslateDirective,
     SliderModule,
     FormsModule,
@@ -269,7 +269,6 @@ export class AlignScanComponent implements OnInit, CacheUploadNotification {
     const numberPagesInScan = await this.db.countNonAlignImage(+this.examId);
 
     if (numberPagesInScan !== 0) {
-      // Change ipdfloadedf partial update
       if (this.partialAlign) {
         if (this.endPage < numberPagesInScan) {
           this.numberPagesInScan = this.endPage;

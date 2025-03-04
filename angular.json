@@ -60,7 +60,6 @@
               "src/main/webapp/favicon.ico",
               "src/main/webapp/manifest.webapp",
               "src/main/webapp/robots.txt",
-              "src/main/webapp/content/images/refined_line_2.png",
               {
                 "glob": "**/*",
                 "input": "src/main/webapp/public",
@@ -90,8 +89,6 @@
             ],
             "styles": [
               "node_modules/bootstrap/dist/css/bootstrap.min.css",
-              "node_modules/primeng/resources/themes/saga-blue/theme.css",
-              "node_modules/primeng/resources/primeng.min.css",
               "node_modules/primeicons/primeicons.css",
               "src/main/webapp/content/scss/vendor.scss",
               "src/main/webapp/content/scss/global.scss"

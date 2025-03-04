@@ -12,12 +12,12 @@ import { ExportPdfService } from '../exportanonymoupdf/exportanonymoupdf.service
 import { firstValueFrom } from 'rxjs';
 import { Title } from '@angular/platform-browser';
 import { ExportResultService, formatDateTime } from '../exportresult.service';
-import { InputSwitchModule } from 'primeng/inputswitch';
+import { ToggleSwitchModule } from 'primeng/toggleswitch';
 import { TableModule } from 'primeng/table';
 import { ButtonDirective } from 'primeng/button';
 import { NgIf } from '@angular/common';
 import { CheckboxModule } from 'primeng/checkbox';
-import { InputTextareaModule } from 'primeng/inputtextarea';
+import { TextareaModule } from 'primeng/textarea';
 import { TooltipModule } from 'primeng/tooltip';
 import { FaIconComponent } from '@fortawesome/angular-fontawesome';
 import { InputTextModule } from 'primeng/inputtext';
@@ -47,13 +47,13 @@ import { ToastModule } from 'primeng/toast';
     InputTextModule,
     FaIconComponent,
     TooltipModule,
-    InputTextareaModule,
+    TextareaModule,
     CheckboxModule,
     NgIf,
     ButtonDirective,
     RouterLink,
     TableModule,
-    InputSwitchModule,
+    ToggleSwitchModule,
     TranslateModule,
   ],
 })
@@ -157,15 +157,28 @@ export class ResultatStudentcourseComponent implements OnInit {
       if (res) {
         await firstValueFrom(this.http.post(this.applicationConfigService.getEndpointFor('api/sendResult/' + this.examid), mail));
         this.showEmail = false;
-        this.currentStudentMail = undefined;
-        this.translate.get('scanexam.mailsent').subscribe(data => {
-          this.blocked = false;
-          this.messageService.add({
-            severity: 'success',
-            summary: data,
-            detail: this.translate.instant('scanexam.mailsentdetails'),
+        if (this.currentStudentMail !== undefined) {
+          const firstname = this.currentStudentMail.prenom; // this.currentStudentMail?.
+          const lastname = this.currentStudentMail.nom; // this.currentStudentMail?.
+          this.currentStudentMail = undefined;
+          this.translate.get('scanexam.mailsent').subscribe(data => {
+            this.blocked = false;
+            this.messageService.add({
+              severity: 'success',
+              summary: data,
+              detail: this.translate.instant('scanexam.mailsentdetailsonstudent', { firstname, lastname }),
+            });
           });
-        });
+        } else {
+          this.translate.get('scanexam.mailsent').subscribe(data => {
+            this.blocked = false;
+            this.messageService.add({
+              severity: 'success',
+              summary: data,
+              detail: this.translate.instant('scanexam.mailsentdetails'),
+            });
+          });
+        }
       } else {
         this.showEmail = false;
         this.currentStudentMail = undefined;

@@ -73,12 +73,12 @@ import { PromisePool } from '@supercharge/promise-pool';
 import { FocusViewService } from '../../layouts/profiles/focusview.service';
 import { CommentSortPipe } from '../sortComment';
 import { KnobModule } from 'primeng/knob';
-import { InputTextareaModule } from 'primeng/inputtextarea';
+import { TextareaModule } from 'primeng/textarea';
 import { GraphicalToolbarCorrectionComponent } from './toolbar/toolbar.component';
 import { PaginatorModule } from 'primeng/paginator';
 import { ProgressBarModule } from 'primeng/progressbar';
 import { GalleriaModule } from 'primeng/galleria';
-import { OverlayPanelModule } from 'primeng/overlaypanel';
+import { PopoverModule } from 'primeng/popover';
 import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { BlockUIModule } from 'primeng/blockui';
 import { SelectButtonModule } from 'primeng/selectbutton';
@@ -87,11 +87,11 @@ import { ThicknessSliderComponent } from './toolbar/thickness-slider/thickness-s
 import { ColourPaletteComponent } from './toolbar/colour-palette/colour-palette.component';
 import { SliderModule } from 'primeng/slider';
 import { TooltipModule } from 'primeng/tooltip';
-import { InputSwitchModule } from 'primeng/inputswitch';
+import { ToggleSwitchModule } from 'primeng/toggleswitch';
 import { RatingModule } from 'primeng/rating';
 import { FaIconComponent } from '@fortawesome/angular-fontawesome';
 import { QuestionpropertiesviewComponent } from '../annotate-template/paint/questionpropertiesview/questionpropertiesview.component';
-import { SidebarModule } from 'primeng/sidebar';
+import { DrawerModule } from 'primeng/drawer';
 import { KeyboardshortcutComponent } from './keyboardshortcut/keyboardshortcut.component';
 import { NgIf, NgFor, DecimalPipe, DatePipe } from '@angular/common';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
@@ -103,14 +103,12 @@ import { DialogModule } from 'primeng/dialog';
 import { ToastModule } from 'primeng/toast';
 import { SwipeDirective } from '../swipe.directive';
 import { IPrediction, Prediction } from 'app/entities/prediction/prediction.model';
-
 import { HttpClient } from '@angular/common/http';
-import { MltComponent } from '../mlt/mlt.component';
-import { CoupageDimageService } from '../mlt/coupage-dimage.service';
-
-import Fuse from 'fuse.js';
+import { Zone4SameCommentOrSameGrade } from '../comparestudentanswer/comparestudentanswer.component';
 import { CheckboxModule } from 'primeng/checkbox';
-import { QueueCoordinationService } from '../image-access/queue-coordination.service';
+import { ZoneService } from 'app/entities/zone/service/zone.service';
+import { PredictionStudentResponseService } from '../mlt/prediction-studentresponse-service';
+import Fuse from 'fuse.js';
 
 enum ScalePolicy {
   FitWidth = 1,
@@ -131,7 +129,7 @@ interface CommentAction {
   selector: 'jhi-corrigequestion',
   templateUrl: './corrigequestion.component.html',
   styleUrls: ['./corrigequestion.component.scss'],
-  providers: [ConfirmationService, MessageService, { provide: LOCALE_ID, useValue: 'fr' }, MltComponent],
+  providers: [ConfirmationService, MessageService, { provide: LOCALE_ID, useValue: 'fr' }],
   standalone: true,
   imports: [
     SwipeDirective,
@@ -147,12 +145,12 @@ interface CommentAction {
     KeyboardShortcutsModule,
     NgIf,
     KeyboardshortcutComponent,
-    SidebarModule,
+    DrawerModule,
     QuestionpropertiesviewComponent,
     OrderListModule,
     FaIconComponent,
     RatingModule,
-    InputSwitchModule,
+    ToggleSwitchModule,
     TooltipModule,
     SliderModule,
     ColourPaletteComponent,
@@ -161,14 +159,14 @@ interface CommentAction {
     SelectButtonModule,
     BlockUIModule,
     ProgressSpinnerModule,
-    OverlayPanelModule,
+    PopoverModule,
     GalleriaModule,
     ProgressBarModule,
     PaginatorModule,
     NgFor,
     GraphicalToolbarCorrectionComponent,
     InplaceModule,
-    InputTextareaModule,
+    TextareaModule,
     KnobModule,
     DecimalPipe,
     DatePipe,
@@ -208,10 +206,11 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
   showImageQCM = false;
   sortCommentVisible = false;
 
-  @ViewChildren('nomImage') canvass2!: QueryList<ElementRef<HTMLCanvasElement>>;
+  //   @ViewChildren('nomImage') canvass2!: QueryList<ElementRef<HTMLCanvasElement>>;
 
   @ViewChildren('nomImage')
   canvass!: QueryList<ElementRef>;
+
   showImage: boolean[] = [];
   nbreFeuilleParCopie: number | undefined;
   numberPagesInScan: number | undefined;
@@ -306,16 +305,15 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
   error: string = '';
   imagepath: string = 'I did not get it';
   predictionsDic: { [key: number]: string } = {}; // Object to store predictions for each page
-  currentPrediction: IPrediction | null = null;
+  currentPrediction?: IPrediction;
   questionId: number | undefined = -1;
   deleted: boolean = false;
   dropdownOpen: boolean = false;
   correctionAvailable = true;
   maximumNote = 0;
   noteStep = 0;
-  filterPredictionsWithNotes: boolean = false;
 
-  developementMode: boolean = false;
+  developementMode: boolean = true;
 
   constructor(
     public examService: ExamService,
@@ -339,16 +337,15 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
     private translateService: TranslateService,
     private preferenceService: PreferenceService,
     private db: CacheServiceImpl,
-    private zone: NgZone,
     private keyboardShortcutService: KeyboardShortcutService,
     private applicationConfigService: ApplicationConfigService,
     private titleService: Title,
     private ngZone: NgZone,
+    private zoneService: ZoneService,
+
     private focusViewService: FocusViewService,
     private http: HttpClient,
-    private mltcomponent: MltComponent,
-    private coupageDimageService: CoupageDimageService,
-    private queueService: QueueCoordinationService,
+    private predictionStudentResponseService: PredictionStudentResponseService,
   ) {
     effect(() => {
       this.testdisableAndEnableKeyBoardShortCutSignal = this.testdisableAndEnableKeyBoardShortCut();
@@ -479,31 +476,12 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
             this.noteStep = 1 / this.questionStep;
             this.currentQuestion = questions[0];
 
-            /* Need to be verified
-            const com = await firstValueFrom(this.predictionService.query({ questionId: questions![0].id }));
-              this.currentPrediction4Question = [];
-              com.body!.forEach(prediction => {
-                this.currentPrediction4Question?.push(signal(prediction));
-              });
-              this.currentPrediction4Question.forEach(com1 => {
-                this.active.set(com1().id!, signal(false));
-              });
-            */
             this.questionId = questions![0].id;
-            this.similarPredictions = [];
-            this.loadPrediction();
-            setTimeout(() => {
-              if (this.currentQuestion?.typeAlgoName === 'manuscrit' && !this.currentPrediction) {
-                this.executeScript();
-              }
-            }, 500);
+            await this.loadPrediction();
 
             if (questions![0].gradeType === GradeType.DIRECT && questions![0].typeAlgoName !== 'QCM') {
               const com = await firstValueFrom(this.textCommentService.query({ questionId: questions![0].id }));
-              /*              this.currentTextComment4Question = com.body!;
-              this.currentTextComment4Question.forEach(com1 => {
-                this.active.set(com1.id!, false);
-              });*/
+
               this.currentTextComment4Question = [];
               com.body!.forEach(comment => {
                 this.currentTextComment4Question?.push(signal(comment));
@@ -513,10 +491,6 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
               });
             } else if (questions![0].gradeType === GradeType.HYBRID && questions![0].typeAlgoName !== 'QCM') {
               const com = await firstValueFrom(this.hybridGradedCommentService.query({ questionId: questions![0].id }));
-              /*              this.currentHybridGradedComment4Question = com.body!;
-              this.currentHybridGradedComment4Question.forEach(com1 => {
-                this.active.set(com1.id!, false);
-              });*/
               this.currentHybridGradedComment4Question = [];
               com.body!.forEach(comment => {
                 this.currentHybridGradedComment4Question?.push(signal(comment));
@@ -946,7 +920,7 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
             this.activeIndex = page - 1;
           }
         }
-        const imagezone = await this.getAllImage4Zone(page, z!);
+        const imagezone = await this.getAllImage4Zone(page, z!, true);
         this.displayImage(
           imagezone,
           this.canvass.get(i),
@@ -967,7 +941,6 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
       this.blocked = true;
 
       this.questions!.forEach(q => {
-        // this.showImage[i] = false;
         this.currentGradedComment4Question = [];
         this.currentTextComment4Question = [];
 
@@ -975,7 +948,6 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
           q.gradedcomments = [];
           q.textcomments = [];
 
-          //    this.loadZone(q.zoneId).then(z => {
           const z = q.zoneDTO;
           const promises: Promise<ImageZone>[] = [];
           const t: IQCMInput = {
@@ -992,10 +964,9 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
               if (pagewithoffset > 0 && pagewithoffset <= this.numberPagesInScan!) {
                 page = pagewithoffset;
               }
-              promises.push(this.getAllImage4Zone(page, z!));
+              promises.push(this.getAllImage4Zone(page, z!, true));
             }
 
-            // t.imageTemplate;
             Promise.all(promises).then(value => {
               value.forEach((value1, index1) => {
                 if (index1 === 1) {
@@ -1117,7 +1088,6 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
       if (gcs !== undefined && gcs.length > 0) {
         resp.gradedcomments.push(gcs[0]());
         await this.updateStudentResponsAndComputeNote4QCM(resp, e.numero!, gcs[0]());
-        // gcs[0].studentResponses?.push(resp!);
       }
     }
   }
@@ -1128,7 +1098,6 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
         if (e1.body !== null) {
           this.testdisableAndEnableKeyBoardShortCut.set(false);
           this.populateDefaultShortCut();
-          //   this.testdisableAndEnableKeyBoardShortCut.set(true);
 
           setTimeout(() => {
             this.testdisableAndEnableKeyBoardShortCut.set(true);
@@ -1369,9 +1338,6 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
       .for(this.queriesPool)
       .process(async prom => {
         await prom.f(prom.c as any, prom.self);
-        /*         await new Promise((resolve)=> {
-            setTimeout(()=> resolve(undefined),100)
-          })*/
       });
     return true;
   }
@@ -1425,10 +1391,9 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
 
     self.resp?.gradedcomments?.push(comment);
 
-    const resp1 = await firstValueFrom(self.updateResponseRequest(self.resp!)); // .subscribe(resp1 => {
+    const resp1 = await firstValueFrom(self.updateResponseRequest(self.resp!));
     self.resp = resp1.body!;
     await self.computeNote(true, self.resp!, self.currentQuestion!);
-    //    });
   }
 
   private async retirerGComment(comment: IGradedComment, self: CorrigequestionComponent) {
@@ -1439,7 +1404,7 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
     }
     self.resp!.gradedcomments = self.resp?.gradedcomments!.filter(e => e.id !== comment.id);
     self.blocked = true;
-    const resp1 = await firstValueFrom(self.updateResponseRequest(self.resp!)); // .subscribe(resp1 => {
+    const resp1 = await firstValueFrom(self.updateResponseRequest(self.resp!));
     self.resp = resp1.body!;
     await self.computeNote(true, self.resp!, self.currentQuestion!);
   }
@@ -1636,7 +1601,6 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
             text: this.titreCommentaire,
             description: this.descCommentaire,
             grade: !this.noteCommentaire ? 0 : this.noteCommentaire,
-            // studentResponses: [{ id: this.resp?.id }],
           };
           this.blocked = true;
           this.gradedCommentService.create(t).subscribe(e => {
@@ -1649,7 +1613,6 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
               this.currentGradedComment4Question?.push(signal(currentComment));
               this.testdisableAndEnableKeyBoardShortCut.set(false);
               this.populateDefaultShortCut();
-              //   this.testdisableAndEnableKeyBoardShortCut.set(true);
 
               setTimeout(() => {
                 this.testdisableAndEnableKeyBoardShortCut.set(true);
@@ -1671,7 +1634,6 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
             grade: !this.grade ? 0 : this.grade,
             step: !this.step ? 1 : this.step,
             relative: this.relative,
-            // studentResponses: [{ id: this.resp?.id }],
           };
           this.blocked = true;
           this.hybridGradedCommentService.create(t).subscribe(e => {
@@ -1682,7 +1644,6 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
               this.testdisableAndEnableKeyBoardShortCut.set(false);
 
               this.populateDefaultShortCut();
-              //  this.testdisableAndEnableKeyBoardShortCut.set(true);
 
               setTimeout(() => {
                 this.testdisableAndEnableKeyBoardShortCut.set(true);
@@ -1750,17 +1711,6 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
         }
       }
     }
-    this.similarPredictions = [];
-    this.loadPrediction();
-    setTimeout(() => {
-      if (this.currentQuestion?.typeAlgoName === 'manuscrit' && !this.currentPrediction) {
-        this.executeScript();
-      }
-    }, 500);
-    if (this.dropdownOpen) {
-      this.dropdownOpen = !this.dropdownOpen;
-      this.similarPrediction();
-    }
   }
 
   async nextStudent() {
@@ -1770,7 +1720,6 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
     if (!this.blocked) {
       this.cleanCanvassCache();
 
-      //      event.preventDefault();
       const m = this.preferenceService.getRandomOrderForExam(+this.examId!);
       this.dropdownOpen = false;
       if (m.size > 0) {
@@ -1803,17 +1752,6 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
         }
       }
     }
-    this.similarPredictions = [];
-    this.loadPrediction();
-    setTimeout(() => {
-      if (this.currentQuestion?.typeAlgoName === 'manuscrit' && !this.currentPrediction) {
-        this.executeScript();
-      }
-    }, 500);
-    if (this.dropdownOpen) {
-      this.dropdownOpen = !this.dropdownOpen;
-      this.similarPrediction();
-    }
   }
   async previousQuestion(): Promise<void> {
     if (this.queryPoolPromise) {
@@ -1835,13 +1773,6 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
         });
       }
     }
-    this.similarPredictions = [];
-    this.loadPrediction();
-    setTimeout(() => {
-      if (this.currentQuestion?.typeAlgoName === 'manuscrit' && !this.currentPrediction) {
-        this.executeScript();
-      }
-    }, 500);
   }
 
   async nextQuestion(): Promise<void> {
@@ -1863,16 +1794,9 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
         });
       }
     }
-    this.similarPredictions = [];
-    this.loadPrediction();
-    setTimeout(() => {
-      if (this.currentQuestion?.typeAlgoName === 'manuscrit' && !this.currentPrediction) {
-        this.executeScript();
-      }
-    }, 500);
   }
 
-  changeStudent($event: any): void {
+  async changeStudent($event: any) {
     this.similarPredictionsSearched = false;
     this.searchControl.reset();
     this.searchedTerm = '';
@@ -1896,22 +1820,9 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
         });
       }
     }
-    this.similarPredictions = [];
-    console.log('Next student');
-    this.loadPrediction();
-    setTimeout(() => {
-      if (this.currentQuestion?.typeAlgoName === 'manuscrit' && !this.currentPrediction) {
-        this.executeScript();
-      }
-    }, 500);
-    if (this.dropdownOpen) {
-      this.dropdownOpen = !this.dropdownOpen;
-      this.loadPrediction();
-      this.similarPrediction();
-    }
   }
 
-  changeQuestion($event: any): void {
+  async changeQuestion($event: any) {
     this.similarPredictionsSearched = false;
     this.searchControl.reset();
     this.searchedTerm = '';
@@ -1926,13 +1837,6 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
         });
       }
     }
-    this.similarPredictions = [];
-    this.loadPrediction();
-    setTimeout(() => {
-      if (this.currentQuestion?.typeAlgoName === 'manuscrit' && !this.currentPrediction) {
-        this.executeScript();
-      }
-    }, 500);
   }
 
   private reviver(key: any, value: any): any {
@@ -1982,6 +1886,7 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
       );
       if (_sheets.body !== null && _sheets.body.length > 0) {
         this.sheet = _sheets.body[0];
+        await this.updatePrediction4currentStudent();
         this.studentService.query({ sheetId: this.sheet.id! }).subscribe(e => {
           if (e.body !== null) {
             this.studentName = e.body.map(e1 => e1.firstname + ' ' + e1.name).join(', ');
@@ -2039,75 +1944,140 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
     }
   }
 
-  loadAllPages(): Promise<void> {
+  async loadAllPages(): Promise<void> {
     this.images = [];
-    return new Promise<void>(resolve => {
-      this.db.countNonAlignImage(+this.examId!).then(page => {
-        if (page > 30) {
-          this.db.countPageTemplate(+this.examId!).then(page1 => {
-            if (this.noalign) {
-              this.db
-                .getNonAlignImageBetweenAndSortByPageNumber(+this.examId!, this.currentStudent * page1, (this.currentStudent + 1) * page1)
-                .then(e1 => {
-                  e1.forEach(e => {
-                    const image = JSON.parse(e!.value, this.reviver);
-                    this.images.push({
-                      src: image.pages,
-                      alt: 'Description for Image 2',
-                      title: 'Exam',
-                    });
-                  });
 
-                  resolve();
-                });
+    const page = await this.db.countNonAlignImage(+this.examId!);
+    if (page > 30) {
+      const page1 = await this.db.countPageTemplate(+this.examId!);
+      if (this.noalign) {
+        const e1 = await this.db.getNonAlignImageBetweenAndSortByPageNumber(
+          +this.examId!,
+          this.currentStudent * page1 + 1,
+          (this.currentStudent + 1) * page1,
+        );
+
+        // eslint-disable-next-line @typescript-eslint/no-shadow
+        for (const { index, e } of e1.map((e, index) => ({ index, e }))) {
+          const image = JSON.parse(e!.value, this.reviver);
+          let s: string = '';
+          if (this.studentName === undefined || this.studentName === '') {
+            const paget = await this.db.countPageTemplate(+this.examId!);
+            if (paget === 1) {
+              s = await this.loadImageAnonymous(image.pages);
             } else {
-              this.db
-                .getAlignImageBetweenAndSortByPageNumber(+this.examId!, this.currentStudent * page1 + 1, (this.currentStudent + 1) * page1)
-                .then(e1 => {
-                  e1.forEach(e => {
-                    const image = JSON.parse(e!.value, this.reviver);
-                    this.images.push({
-                      src: image.pages,
-                      alt: 'Description for Image 2',
-                      title: 'Exam',
-                    });
-                  });
-                  resolve();
-                });
+              if ((index % paget) % 2 === 0) {
+                s = await this.loadImageAnonymous(image.pages);
+              } else {
+                s = image.pages;
+              }
             }
-          });
-        } else {
-          if (this.noalign) {
-            this.db.getNonAlignSortByPageNumber(+this.examId!).then(e1 => {
-              e1.forEach(e => {
-                const image = JSON.parse(e!.value, this.reviver);
-
-                this.images.push({
-                  src: image.pages,
-                  alt: 'Description for Image 2',
-                  title: 'Exam',
-                });
-              });
-              resolve();
-            });
           } else {
-            this.db.getAlignSortByPageNumber(+this.examId!).then(e1 => {
-              e1.forEach(e => {
-                const image = JSON.parse(e!.value, this.reviver);
-                this.images.push({
-                  src: image.pages,
-                  alt: 'Description for Image 2',
-                  title: 'Exam',
-                });
-              });
-              resolve();
+            s = image.pages;
+          }
+          if (s !== '') {
+            this.images.push({
+              src: s,
+              alt: 'Description for Image 2',
+              title: 'Exam',
             });
           }
         }
-      });
-    });
+      } else {
+        const e1 = await this.db.getAlignImageBetweenAndSortByPageNumber(
+          +this.examId!,
+          this.currentStudent * page1 + 1,
+          (this.currentStudent + 1) * page1,
+        );
+        // eslint-disable-next-line @typescript-eslint/no-shadow
+        for (const { index, e } of e1.map((e, index) => ({ index, e }))) {
+          const image = JSON.parse(e!.value, this.reviver);
+          let s: string = '';
+          if (this.studentName === undefined || this.studentName === '') {
+            const paget = await this.db.countPageTemplate(+this.examId!);
+            if (paget === 1) {
+              s = await this.loadImageAnonymous(image.pages);
+            } else {
+              if ((index % paget) % 2 === 0) {
+                s = await this.loadImageAnonymous(image.pages);
+              } else {
+                s = image.pages;
+              }
+            }
+          } else {
+            s = image.pages;
+          }
+          if (s !== '') {
+            this.images.push({
+              src: s,
+              alt: 'Description for Image 2',
+              title: 'Exam',
+            });
+          }
+        }
+      }
+    } else {
+      if (this.noalign) {
+        const e1 = await this.db.getNonAlignSortByPageNumber(+this.examId!);
+
+        // eslint-disable-next-line @typescript-eslint/no-shadow
+        for (const { index, e } of e1.map((e, index) => ({ index, e }))) {
+          const image = JSON.parse(e!.value, this.reviver);
+          let s: string = '';
+          if (this.studentName === undefined || this.studentName === '') {
+            const paget = await this.db.countPageTemplate(+this.examId!);
+            if (paget === 1) {
+              s = await this.loadImageAnonymous(image.pages);
+            } else {
+              if ((index % paget) % 2 === 0) {
+                s = await this.loadImageAnonymous(image.pages);
+              } else {
+                s = image.pages;
+              }
+            }
+          } else {
+            s = image.pages;
+          }
+          if (s !== '') {
+            this.images.push({
+              src: s,
+              alt: 'Description for Image 2',
+              title: 'Exam',
+            });
+          }
+        }
+      } else {
+        const e1 = await this.db.getAlignSortByPageNumber(+this.examId!);
+        // eslint-disable-next-line @typescript-eslint/no-shadow
+        for (const { index, e } of e1.map((e, index) => ({ index, e }))) {
+          const image = JSON.parse(e!.value, this.reviver);
+          let s: string = '';
+          if (this.studentName === undefined || this.studentName === '') {
+            const paget = await this.db.countPageTemplate(+this.examId!);
+            if (paget === 1) {
+              s = await this.loadImageAnonymous(image.pages);
+            } else {
+              if ((index % paget) % 2 === 0) {
+                s = await this.loadImageAnonymous(image.pages);
+              } else {
+                s = image.pages;
+              }
+            }
+          } else {
+            s = image.pages;
+          }
+          if (s !== '') {
+            this.images.push({
+              src: s,
+              alt: 'Description for Image 2',
+              title: 'Exam',
+            });
+          }
+        }
+      }
+    }
   }
-  async getAllImage4Zone(pageInscan: number, zone: IZone): Promise<ImageZone> {
+  async getAllImage4Zone(pageInscan: number, zone: IZone, computescale: boolean): Promise<ImageZone> {
     const imageToCrop: IImageCropFromZoneInput = {
       examId: +this.examId!,
       factor: +this.factor,
@@ -2118,7 +2088,9 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
       z: zone,
     };
     const crop = await firstValueFrom(this.alignImagesService.imageCropFromZone(imageToCrop));
-    this.computeScale(crop.width, crop.height);
+    if (computescale) {
+      this.computeScale(crop.width, crop.height);
+    }
 
     return {
       i: new ImageData(new Uint8ClampedArray(crop.image), crop.width, crop.height),
@@ -2453,7 +2425,7 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
           if (pagewithoffset > 0 && pagewithoffset <= this.numberPagesInScan!) {
             page = pagewithoffset;
           }
-          this.getAllImage4Zone(page, z!).then(value1 => {
+          this.getAllImage4Zone(page, z!, true).then(value1 => {
             t.widthZone = value1.w!;
             t.heightZone = value1.h!;
             t.pages!.push({ imageInput: value1.i, numero: 1 });
@@ -2494,13 +2466,13 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
             this.currentTextComment4Question = this.currentTextComment4Question!.filter(e => e().id !== comment.id);
 
             // Also remove this comment from all similar responses that have it
-            this.similarPredictions.forEach(similar => {
-              const response = this.sameResponses.get(similar.studentId!);
+            /*            this.similarPredictions.forEach(similar => {
+              const response = this.sameResponses.get(similar.sheetId!);
               if (response && response.textcomments) {
                 response.textcomments = response.textcomments.filter(c => c.id !== comment.id);
-                this.updateSimilarComment(similar.studentId!, response);
+                this.updateSimilarComment(similar.sheetId!);
               }
-            });
+            });*/
 
             this.textCommentService.delete(comment!.id!).subscribe(() => {
               const m = this.preferenceService.getCommentSort4Question(this.examId + '_' + this.currentQuestion!.id!);
@@ -2592,6 +2564,15 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
   }
 
   // ----------------- code for realign -----------------------
+
+  onAccept(cd: any): void {
+    cd.accept();
+    this.confirmationService.close();
+  }
+  onReject(cd: any): void {
+    cd.reject();
+    this.confirmationService.close();
+  }
 
   realign(): void {
     this.confirmationService.confirm({
@@ -2771,7 +2752,7 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
   compareGradedComment(event: any, comment: IGradedComment) {
     if (!this.blocked) {
       if (event.ctrlKey || event.metaKey) {
-        this.zone.run(() => {
+        this.ngZone.run(() => {
           const url = this.router.serializeUrl(this.router.createUrlTree(['/comparegradedcomment/' + this.examId + '/' + comment.id]));
           if ('/' !== this.applicationConfigService.getFrontUrl()) {
             if (this.applicationConfigService.getFrontUrl().endsWith('/') && url.startsWith('/')) {
@@ -2784,7 +2765,7 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
           }
         });
       } else {
-        this.zone.run(() => {
+        this.ngZone.run(() => {
           this.router.navigate(['/comparegradedcomment/' + this.examId + '/' + comment.id]);
         });
       }
@@ -2794,7 +2775,7 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
   compareHybridComment(event: any, comment: IHybridGradedComment, stepValue: number) {
     if (!this.blocked) {
       if (event.ctrlKey || event.metaKey) {
-        this.zone.run(() => {
+        this.ngZone.run(() => {
           const url = this.router.serializeUrl(
             this.router.createUrlTree(['/comparehybridcomment/' + this.examId + '/' + comment.id + '/' + stepValue]),
           );
@@ -2809,7 +2790,7 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
           }
         });
       } else {
-        this.zone.run(() => {
+        this.ngZone.run(() => {
           this.router.navigate(['/comparehybridcomment/' + this.examId + '/' + comment.id + '/' + stepValue]);
         });
       }
@@ -2819,7 +2800,7 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
   compareTextComment(event: any, comment: ITextComment) {
     if (!this.blocked) {
       if (event.ctrlKey || event.metaKey) {
-        this.zone.run(() => {
+        this.ngZone.run(() => {
           const url = this.router.serializeUrl(this.router.createUrlTree(['/comparetextcomment/' + this.examId + '/' + comment.id]));
           if ('/' !== this.applicationConfigService.getFrontUrl()) {
             if (this.applicationConfigService.getFrontUrl().endsWith('/') && url.startsWith('/')) {
@@ -2832,7 +2813,7 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
           }
         });
       } else {
-        this.zone.run(() => {
+        this.ngZone.run(() => {
           this.router.navigate(['/comparetextcomment/' + this.examId + '/' + comment.id]);
         });
       }
@@ -2841,7 +2822,7 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
   compareMark(event: any, response: IStudentResponse) {
     if (!this.blocked) {
       if (event.ctrlKey || event.metaKey) {
-        this.zone.run(() => {
+        this.ngZone.run(() => {
           const url = this.router.serializeUrl(this.router.createUrlTree(['/comparemark/' + this.examId + '/' + response.id]));
           if ('/' !== this.applicationConfigService.getFrontUrl()) {
             if (this.applicationConfigService.getFrontUrl().endsWith('/') && url.startsWith('/')) {
@@ -2854,7 +2835,7 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
           }
         });
       } else {
-        this.zone.run(() => {
+        this.ngZone.run(() => {
           this.router.navigate(['/comparemark/' + this.examId + '/' + response.id]);
         });
       }
@@ -3041,9 +3022,191 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
     event.preventDefault();
   }
 
+  updateNewRelative($event: any): void {
+    if ($event.value) {
+      this.grade = (this.grade! * 100) / this.currentQuestion!.point!;
+    } else {
+      this.grade = (this.currentQuestion!.point! * this.grade!) / 100;
+    }
+  }
+
+  updateRelative($event: any, l: IHybridGradedComment): void {
+    if ($event.value) {
+      l.grade = (l.grade! * 100) / this.currentQuestion!.point!;
+    } else {
+      l.grade = (this.currentQuestion!.point! * l.grade!) / 100;
+    }
+  }
+
+  async loadImageAnonymous(file: any): Promise<string> {
+    return new Promise(resolve => {
+      const i = new Image();
+      i.onload = () => {
+        const editedImage: HTMLCanvasElement = <HTMLCanvasElement>document.createElement('canvas');
+        editedImage.width = i.width;
+        this.computeScale(i.width, i.height);
+        editedImage.height = i.height;
+        const ctx = editedImage.getContext('2d');
+        ctx!.drawImage(i, 0, 0);
+        this.maskNameFirstName(editedImage).then(() => {
+          let exportImageType = 'image/webp';
+          if (
+            this.preferenceService.getPreference().imageTypeExport !== undefined &&
+            ['image/webp', 'image/png', 'image/jpg'].includes(this.preferenceService.getPreference().imageTypeExport)
+          ) {
+            exportImageType = this.preferenceService.getPreference().imageTypeExport;
+          }
+          const s = editedImage.toDataURL(exportImageType);
+          resolve(s);
+        });
+      };
+      i.src = file;
+    });
+  }
+
+  async maskNameFirstName(canvas: HTMLCanvasElement): Promise<void> {
+    if (this.exam!.namezoneId) {
+      const namezone = (await firstValueFrom(this.zoneService.find(this.exam!.namezoneId!))).body;
+
+      if (namezone !== null) {
+        const x = (namezone.xInit! * canvas.width) / 100000;
+        const y = (namezone.yInit! * canvas.height) / 100000;
+        const width = (namezone.width! * canvas.width) / 100000;
+        const height = (namezone.height! * canvas.height) / 100000;
+        const ctx = canvas.getContext('2d');
+        ctx?.beginPath();
+        ctx?.fillRect(x, y, width, height);
+        ctx?.stroke();
+      }
+    }
+    if (this.exam!.firstnamezoneId) {
+      const firstnamezone = (await firstValueFrom(this.zoneService.find(this.exam!.firstnamezoneId!))).body;
+
+      if (firstnamezone !== null) {
+        const x = (firstnamezone.xInit! * canvas.width) / 100000;
+        const y = (firstnamezone.yInit! * canvas.height) / 100000;
+        const width = (firstnamezone.width! * canvas.width) / 100000;
+        const height = (firstnamezone.height! * canvas.height) / 100000;
+        const ctx = canvas.getContext('2d');
+        ctx?.beginPath();
+        ctx?.fillRect(x, y, width, height);
+        ctx?.stroke();
+      }
+    }
+    if (this.exam!.idzoneId) {
+      const inenamezone = (await firstValueFrom(this.zoneService.find(this.exam!.idzoneId!))).body;
+
+      if (inenamezone !== null) {
+        const x = (inenamezone.xInit! * canvas.width) / 100000;
+        const y = (inenamezone.yInit! * canvas.height) / 100000;
+        const width = (inenamezone.width! * canvas.width) / 100000;
+        const height = (inenamezone.height! * canvas.height) / 100000;
+        const ctx = canvas.getContext('2d');
+        ctx?.beginPath();
+        ctx?.fillRect(x, y, width, height);
+        ctx?.stroke();
+      }
+    }
+  }
+
+  async passToNextNotGradedQuestion() {
+    const nbStudents = this.numberPagesInScan! / this.nbreFeuilleParCopie!;
+    console.log('My note', this.resp);
+    for (let i = 0; i < nbStudents; i++) {
+      if (this.currentStudent < i) {
+        const response = await this.getStudentResponse4EmptyStudent(
+          this.questions!.map(q => q.id!),
+          i,
+        );
+        console.log('Student', i + 1, 'Response:', response);
+        if (response === undefined) {
+          this.currentStudentPaginator = i;
+          this.currentStudent = i;
+          this.ngZone.run(() => {
+            this.router.navigateByUrl('/answer/' + this.examId! + '/' + (this.questionindex! + 1) + '/' + (i + 1));
+          });
+          if (this.dropdownOpen) {
+            this.dropdownOpen = false;
+          }
+          return;
+        }
+      }
+    }
+    for (let i = 0; i < nbStudents; i++) {
+      const response = await this.getStudentResponse4EmptyStudent(
+        this.questions!.map(q => q.id!),
+        i,
+      );
+      console.log('Student', i + 1, 'Response:', response);
+      if (response === undefined) {
+        this.currentStudentPaginator = i;
+        this.currentStudent = i;
+        this.ngZone.run(() => {
+          this.router.navigateByUrl('/answer/' + this.examId! + '/' + (this.questionindex! + 1) + '/' + (i + 1));
+        });
+        if (this.dropdownOpen) {
+          this.dropdownOpen = false;
+        }
+        return;
+      }
+    }
+    // No ungraded responses were found
+    this.messageService.add({
+      severity: 'info',
+      summary: this.translateService.instant('scanexam.noUngradedResponses'),
+    });
+  }
+
+  async passToPreviousNotGradedQuestion() {
+    const nbStudents = this.numberPagesInScan! / this.nbreFeuilleParCopie!;
+    console.log('My note', this.resp);
+    for (let i = this.currentStudent - 1; i >= 0; i--) {
+      if (this.currentStudent > i) {
+        const response = await this.getStudentResponse4EmptyStudent(
+          this.questions!.map(q => q.id!),
+          i,
+        );
+        console.log('Student', i + 1, 'Response:', response);
+        if (response === undefined) {
+          this.currentStudentPaginator = i;
+          this.currentStudent = i;
+          this.ngZone.run(() => {
+            this.router.navigateByUrl('/answer/' + this.examId! + '/' + (this.questionindex! + 1) + '/' + (i + 1));
+          });
+          if (this.dropdownOpen) {
+            this.dropdownOpen = false;
+          }
+          return;
+        }
+      }
+    }
+    for (let i = nbStudents - 1; i >= 0; i--) {
+      const response = await this.getStudentResponse4EmptyStudent(
+        this.questions!.map(q => q.id!),
+        i,
+      );
+      console.log('Student', i + 1, 'Response:', response);
+      if (response === undefined) {
+        this.currentStudentPaginator = i;
+        this.currentStudent = i;
+        this.ngZone.run(() => {
+          this.router.navigateByUrl('/answer/' + this.examId! + '/' + (this.questionindex! + 1) + '/' + (i + 1));
+        });
+        if (this.dropdownOpen) {
+          this.dropdownOpen = false;
+        }
+        return;
+      }
+    }
+    // No ungraded responses were found
+    this.messageService.add({
+      severity: 'info',
+      summary: this.translateService.instant('scanexam.noUngradedResponses'),
+    });
+  }
   // This method is to get the image
   getImageFromCanvas(): string | undefined {
-    const canvasArray = this.canvass2.toArray();
+    const canvasArray = this.canvass.toArray();
     if (canvasArray && canvasArray[0]) {
       const canvas = canvasArray[0].nativeElement;
       const base64Data = canvas.toDataURL(); // Convert the canvas to a base64-encoded string
@@ -3054,100 +3217,106 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
     }
   }
 
-  storePrediction(
-    prediction: string,
-    question_id: number | undefined,
-    exam_id: string | undefined,
-    student_id: number | undefined,
-    question_number: number,
-    prediction_id: number | undefined,
-  ): void {
-    if (this.blocked) {
-      return;
-    } // Ensure storePrediction is not called twice
-    this.blocked = true;
-
-    const predictionData: IPrediction = {
-      id: prediction_id,
-      studentId: student_id,
-      examId: exam_id,
-      questionNumber: question_number,
-      questionId: question_id,
-      text: prediction,
-      jsonData: '{"key": "value"}',
-      zonegeneratedid: 'ZoneID123',
-    };
-
-    this.predictionService.update(predictionData).subscribe({
-      next: createdResponse => {
-        this.currentPrediction = createdResponse.body;
-        this.loadPrediction();
-        this.blocked = false; // Unblock after successful creation
-      },
-      error: createError => {
-        console.error('Error storing hardcoded prediction:', createError);
-        this.blocked = false; // Unblock UI even on error
-      },
+  async convertImage(imageData: ImageData): Promise<string | ArrayBuffer | null> {
+    return new Promise<string | ArrayBuffer | null>((resolve, reject) => {
+      try {
+        const c = new OffscreenCanvas(imageData.width, imageData.height);
+        const ctx = c.getContext('2d');
+        if (ctx) {
+          ctx.putImageData(imageData, 0, 0);
+          c.convertToBlob().then(blob => {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+              const base64data = reader.result;
+              resolve(base64data);
+            };
+            reader.readAsDataURL(blob);
+          });
+        }
+      } catch (e) {
+        console.error(e);
+        reject(e);
+      }
     });
   }
 
-  createPrediction(
-    question_id: number | undefined,
-    exam_id: string | undefined,
-    student_id: number | undefined,
-    question_number: number,
-    image_data: string,
-  ): Promise<number | undefined> {
-    return new Promise((resolve, reject) => {
-      if (this.blocked) {
-        resolve(undefined); // Exit if already blocked
-        return;
-      }
-
+  async performPrediction4Question(): Promise<void> {
+    if (this.currentQuestion?.typeAlgoName === 'manuscrit') {
       this.blocked = true;
-      const predictionData: IPrediction = {
-        studentId: student_id,
-        examId: exam_id,
-        questionNumber: question_number,
-        questionId: question_id,
-        text: 'En attente',
-        jsonData: '{"key": "value"}',
-        zonegeneratedid: 'ZoneID123',
-        imageData: image_data,
-      };
-
-      this.predictionService.create(predictionData).subscribe({
-        next: createdResponse => {
-          this.currentPrediction = createdResponse.body;
-          const id = createdResponse.body?.id;
-          this.blocked = false; // Unblock after prediction creation
-          resolve(id);
+      this.showSpinner = true;
+      this.showavancement = true;
+      await firstValueFrom(this.predictionService.deleteByQuestionId(this.currentQuestion!.id!));
+      this.predictionStudentResponseService.predictStudentResponsesFromQuestionIds(+this.examId!, this.currentQuestion!.id!).subscribe({
+        next: (res: number[]) => {
+          this.currentCopieocr = res[0];
+          this.nbrecopieocr = res[1];
         },
-        error: createError => {
-          console.error('Error creating prediction:', createError);
+        error: err => {
+          console.error('Error predicting student responses:', err);
+          alert('Failed to predict student responses. Please try again.');
+        },
+        complete: () => {
           this.blocked = false;
-          reject(createError);
+          this.showSpinner = false;
+          this.currentCopieocr = 0;
+          this.nbrecopieocr = 0;
+          this.showavancement = false;
+          this.dropdownOpen = false;
+          this.loadPrediction();
         },
       });
-    });
+    }
   }
 
+  async deletePrediction4Question(): Promise<void> {
+    if (this.currentQuestion?.typeAlgoName === 'manuscrit') {
+      await firstValueFrom(this.predictionService.deleteByQuestionId(this.currentQuestion!.id!));
+      this.dropdownOpen = false;
+      this.loadPrediction();
+    }
+  }
+
+  showavancement = false;
+  currentCopieocr = 0;
+  nbrecopieocr = 0;
+  similarPredictionsSearched = false;
+  allpredictions: IPrediction[] = [];
+  allpredictionsgWithoutStudentResponse: IPrediction[] = [];
+  predictionsFusing: IPrediction[] = [];
+  predictionsFusingWithoutStudentResponse: IPrediction[] = [];
+  predictionstoShow: WritableSignal<IPrediction[]> = signal([]);
+  selectedpredictions: WritableSignal<IPrediction[]> = signal([]);
+  filterPredictionsWithNotes: boolean = false;
+  searchedTerm: string = '';
+  searchControl = new FormControl('');
+  private searchSubscription?: Subscription;
+
+  filterallexamsheets = false;
+  synchrocomments = false;
+  toomuchsimilar = false;
+
   async loadPrediction() {
-    try {
-      const predictionResponse = await firstValueFrom(this.predictionService.query({ questionId: this.questionId }));
-      const predictions = predictionResponse.body || [];
+    if (this.currentQuestion!.typeAlgoName === 'manuscrit') {
+      try {
+        const predictionResponse = await firstValueFrom(this.predictionService.query({ questionId: this.questionId }));
+        this.allpredictions = predictionResponse.body || [];
 
-      // Find the first matching prediction
-      this.currentPrediction = predictions.find(pred => pred.studentId === this.studentid) || null;
-
-      if (this.currentPrediction) {
-        this.deleted = false;
-      } else {
-        console.warn('No valid predictions found for the current question index.');
+        await this.updatePrediction4currentStudent();
+      } catch (err) {
+        console.error('Error loading prediction:', err);
+        this.currentPrediction = undefined; // Explicitly reset on error
       }
-    } catch (err) {
-      console.error('Error loading prediction:', err);
-      this.currentPrediction = null; // Explicitly reset on error
+    } else {
+      this.allpredictions = [];
+      this.allpredictionsgWithoutStudentResponse = [];
+      this.predictionsFusing = [];
+      this.predictionstoShow.update(() => []);
+      this.selectedpredictions.update(() => []);
+      this.filterPredictionsWithNotes = false;
+      this.searchedTerm = '';
+      this.toomuchsimilar = false;
+      this.synchrocomments = false;
+      this.filterallexamsheets = false;
     }
   }
 
@@ -3158,7 +3327,7 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
         next: () => {
           this.deleted = true;
           console.log('Deleted:', this.deleted);
-          this.currentPrediction = null;
+          this.currentPrediction = undefined;
           console.log(`Deleted prediction with id: ${id}`);
         },
         error: err => {
@@ -3169,190 +3338,62 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
     }
   }
 
-  base64Image = '';
-  refinedLines: string[] = [];
-
-  // Méthode pour exécuter le script
-  async executeScript(): Promise<void> {
-    this.deleted = false;
-    if (this.currentQuestion?.typeAlgoName === 'manuscrit') {
-      console.log('Before pause');
-      this.queueService.pauseQueue();
-      this.changeDetector.detectChanges();
-      const imageData = this.getImageFromCanvas();
-
-      if (!imageData) {
-        console.error('No image data found on the canvas');
-        this.error = 'No image selected';
-        return;
-      }
-
-      const question_id = this.questionId;
-      const exam_id = this.examId;
-      const student_id = this.studentid;
-      const question_number = this.questionindex + 1;
-
-      // Await the ID from createPrediction before proceeding
-      const prediction_id = await this.createPrediction(question_id, exam_id, student_id, question_number, imageData);
-
-      // Proceed only if prediction_id is valid
-      if (prediction_id !== undefined) {
-        this.coupageDimageService.runScript(imageData).subscribe({
-          next: async response => {
-            this.refinedLines = response.refinedLines || [];
-            const currentPageIndex = this.questionindex;
-
-            if (this.refinedLines.length > 0) {
-              try {
-                // Convert refined lines to base64 format while keeping the index
-                const base64Lines = this.refinedLines.map((line, index) => ({
-                  index,
-                  base64: `data:image/png;base64,${line}`,
-                }));
-
-                // Send ordered batch to MLT
-                console.log('I am sending the batch now:', base64Lines);
-                const results = await this.mltcomponent.executeMLT(base64Lines.map(item => item.base64));
-
-                // Ensure predictions are stored in the correct order
-                const sortedPredictions = base64Lines.map(item => results![item.index]);
-                const prediction = sortedPredictions.join('\n');
-
-                this.predictionsDic[currentPageIndex] = prediction;
-
-                // Store batch prediction
-                this.storePrediction(prediction, question_id, exam_id, student_id, question_number, prediction_id);
-                console.log('Before resume');
-                this.queueService.resumeQueue();
-                this.output = prediction;
-                this.error = '';
-              } catch (error) {
-                console.error('Error processing refined lines:', error);
-              }
-            }
-          },
-          error: error => {
-            console.error('Error refining the image:', error);
-          },
-        });
-      }
-    }
-  }
-
-  similarPredictions: Prediction[] = [];
-  similarPredictionsSearched = false;
-  async similarPrediction() {
-    this.similarPredictions = [];
-    this.dropdownOpen = !this.dropdownOpen;
-
-    this.setupSearchListener();
-    try {
-      const predictionResponse = await firstValueFrom(this.predictionService.query({ questionId: this.questionId }));
-      const predictions = predictionResponse.body || [];
-      if (this.currentPrediction && predictions.length > 0) {
-        this.similarPredictions = this.findSimilarPredictions(this.currentPrediction, predictions);
-        this.similarPredictions = this.similarPredictions.filter(
-          (prediction, index, self) =>
-            index === self.findIndex(p => p.questionId === prediction.questionId && p.studentId === prediction.studentId),
-        );
-
-        // Sort by studentId
-        this.similarPredictions.sort((a, b) => {
-          const studentIdA = a.studentId || 0;
-          const studentIdB = b.studentId || 0;
-          return studentIdA - studentIdB;
-        });
-        this.deleted = false;
-        this.loadPredictionsForSearch();
-      } else {
-        this.executeScript();
-      }
-      this.similarPredictionsSearched = true;
-    } catch (err) {
-      console.error('Error loading prediction:', err);
-      this.currentPrediction = null; // Explicitly reset on error
-    }
-    this.getSameResponses();
-    console.log('Similar responses:', this.sameResponses);
-  }
-
-  selectedSimilars: Map<Prediction, number> = new Map();
-
-  async selectSimilarPrediction(similar: Prediction) {
-    if (this.selectedSimilars.has(similar)) {
-      const currentValue = this.selectedSimilars.get(similar);
-      if (currentValue === 1) {
-        // Unselect the prediction
-        this.selectedSimilars.set(similar, 0);
-      } else {
-        // Select the prediction
-        this.selectedSimilars.set(similar, 1);
-      }
-    } else {
-      // Add the prediction and set it to selected
-      this.selectedSimilars.set(similar, 1);
-    }
-    this.getSameResponses();
-  }
-
-  tempPredictions: IPrediction[] = [];
-
   isAllSelected(): boolean {
-    if (!this.tempPredictions || this.tempPredictions.length === 0) {
+    if (!this.predictionstoShow() || this.predictionstoShow().length === 0) {
       return false;
     }
-    return this.tempPredictions.every(prediction => this.selectedSimilars.get(prediction)! > 0);
+    return this.predictionstoShow().every(prediction => this.selectedpredictions().includes(prediction));
   }
 
   toggleSelectAll(event: any): void {
     const isChecked = event.target.checked;
-    this.tempPredictions.forEach(prediction => {
-      this.selectedSimilars.set(prediction, isChecked ? 1 : 0);
-    });
+    if (isChecked) {
+      this.selectedpredictions.update(() => [...this.predictionstoShow()]);
+    } else {
+      this.selectedpredictions.update(() => []);
+    }
   }
 
   getSelectedCount(): number {
-    return Array.from(this.selectedSimilars.values()).filter(v => v === 1).length;
+    return Array.from(this.selectedpredictions()).length;
   }
 
-  changeSelectedSimilarGrades() {
-    const selectedCount = Array.from(this.selectedSimilars.values()).filter(v => v === 1).length;
-    this.confirmationService.confirm({
-      message: this.translateService.instant('scanexam.confirmSelectedGrades', { count: selectedCount }),
-      accept: () => {
-        for (const similar of this.selectedSimilars) {
-          if (similar[1] === 1) {
-            this.sameGrade(similar[0]);
-          }
-        }
-        this.messageService.add({
-          severity: 'info',
-          detail: this.translateService.instant('scanexam.gradesAppliedSelected'),
-        });
-      },
+  async selectSimilarPrediction(similar: Prediction) {
+    this.selectedpredictions.update(predictions => {
+      if (predictions.includes(similar)) {
+        return predictions.filter(prediction => prediction !== similar);
+      } else {
+        return [...predictions, similar];
+      }
     });
-    this.getSameResponses();
   }
 
-  changeAllSimilarGrades() {
-    const totalCount = this.similarPredictions.length;
-    this.confirmationService.confirm({
-      message: this.translateService.instant('scanexam.confirmAllGrades', { count: totalCount }),
-      accept: () => {
-        for (const similar of this.similarPredictions) {
-          this.sameGrade(similar);
-        }
-        this.messageService.add({
-          severity: 'info',
-          detail: this.translateService.instant('scanexam.gradesAppliedAll'),
-        });
-      },
-    });
-    this.getSameResponses();
+  async updatePrediction4currentStudent() {
+    // Find the first matching prediction
+    this.currentPrediction = this.allpredictions.find(pred => pred.sheetId === this.sheet?.id) || undefined;
+    if (this.currentPrediction) {
+      this.predictionsFusing = this.findSimilarPredictions(this.currentPrediction, this.allpredictions);
+      const predsheetids = this.predictionsFusing.map(prediction => prediction.sheetId!);
+      if (predsheetids.length > 0) {
+        const s = await firstValueFrom(
+          this.predictionService.findPredictionWithoutStudentResponse(predsheetids, this.currentQuestion!.numero!, +this.examId!),
+        );
+        this.predictionsFusingWithoutStudentResponse = this.predictionsFusing.filter(s1 => s.predictionsids.includes(s1.sheetId!));
+        this.allpredictionsgWithoutStudentResponse = this.allpredictions.filter(s1 => s.predictionsids.includes(s1.sheetId!));
+      } else {
+        this.predictionsFusingWithoutStudentResponse = [];
+        this.allpredictionsgWithoutStudentResponse = [];
+      }
+      this.deleted = false;
+    } else {
+      this.deleted = true;
+      console.warn('No valid predictions found for the current question index.');
+    }
+    this.dropdownOpen = false;
   }
 
-  // Finding the simlar prediction using fuse.js
-  findSimilarPredictions(currentPrediction: Prediction, predictions: Prediction[]) {
+  /* Permet de trouver les réponses simulaires à partir d'un algo de fuzzing */
+  findSimilarPredictions(currentPrediction: Prediction, predictions: Prediction[]): Prediction[] {
     // Fuse.js options
     const fuseOptions = {
       keys: ['text'],
@@ -3380,247 +3421,69 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
     return [...similarPredictions].filter(prediction => prediction.id !== currentPrediction.id);
   }
 
-  getFilteredSimilarPredictions(): IPrediction[] {
-    if (this.searchedTerm != '') {
-      for (let prediction of this.similarPredictions) {
-        if (!this.filteredSearchedPredictions.includes(prediction)) {
-          this.selectedSimilars.set(prediction, 0);
-        }
-      }
-      if (this.filterPredictionsWithNotes) {
-        for (let prediction of this.selectedSimilars.keys()) {
-          if (this.getSimilarGrade(prediction.studentId!) != undefined) {
-            this.selectedSimilars.set(prediction, 0);
-          }
-        }
-        this.tempPredictions = this.filteredSearchedPredictions.filter(
-          prediction => this.getSimilarGrade(prediction.studentId!) == undefined,
-        );
-      }
-      this.tempPredictions = this.filteredSearchedPredictions;
-    } else if (this.filterPredictionsWithNotes) {
-      for (let prediction of this.selectedSimilars.keys()) {
-        if (this.getSimilarGrade(prediction.studentId!) != undefined) {
-          this.selectedSimilars.set(prediction, 0);
-        }
-      }
-      this.tempPredictions = this.similarPredictions.filter(prediction => this.getSimilarGrade(prediction.studentId!) == undefined);
-    } else {
-      this.tempPredictions = this.similarPredictions;
-    }
-    return this.tempPredictions;
-  }
+  async applySameNoteAndGrade() {
+    const l = this.selectedpredictions().map(p => p.sheetPageMin! / (p.sheetPageMax! - p.sheetPageMin! + 1));
+    const templat = this.sheet!.pagemin! / (this.sheet!.pagemax! - this.sheet!.pagemin! + 1);
+    const clus = {
+      templat: templat,
+      copies: l,
+    };
 
-  // Same starts, comments etc
-  async sameGrade(similar: Prediction) {
-    // let try1 = await this.getStudentResponse(this.questions!.map(q => q.id!));
-    let response = await this.getStudentResponse4CurrentStudent(
-      this.questions!.map(q => q.id!),
-      similar.studentId! - 1,
+    await firstValueFrom(
+      this.http.post<Zone4SameCommentOrSameGrade>(
+        this.applicationConfigService.getEndpointFor('api/updateStudentResponse4Cluster/' + this.examId + '/' + this.questionId),
+        clus,
+      ),
     );
-    console.log('Similar note:', response.note);
-    console.log('Note:', this.resp?.note);
-    response.note = this.resp?.note;
-    response.comments = this.resp?.comments;
-    response.gradedcomments = this.resp?.gradedcomments;
-    response.textcomments = this.resp?.textcomments;
-    response.star = this.resp?.star;
-    response.worststar = this.resp?.worststar;
-    this.updateResponseRequest(response).subscribe(sr1 => {
-      response = sr1.body!;
+    await this.initSimilarPrediction();
+  }
+
+  async prefetchImage(predictions: IPrediction[]) {
+    if (this.questions) {
+      for (const q of this.questions) {
+        const z = q.zoneDTO;
+        for (const pred of predictions) {
+          if (pred.imageData === undefined || pred.imageData === '') {
+            if (pred.sheetId !== undefined) {
+              const _sheet = await firstValueFrom(this.sheetService.find(pred.sheetId));
+              const sheet = _sheet.body || undefined;
+              if (sheet) {
+                const pagetoLoad = sheet.pagemin! + z!.pageNumber!;
+                const imagecrop = await this.getAllImage4Zone(pagetoLoad, z!, false);
+                const json = await this.convertImage(imagecrop.i);
+                pred.imageData = '' + json;
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  async initSimilarPrediction() {
+    this.dropdownOpen = !this.dropdownOpen;
+    this.filterPredictionsWithNotes = false;
+    if (this.dropdownOpen) {
+      this.blocked = true;
+      if (this.allpredictions.length === 0) {
+        await this.loadPrediction();
+      }
+
+      if (this.allpredictions.length > 0) {
+        this.setupSearchListener();
+
+        try {
+          this.prefetchImage(this.predictionsFusing);
+          this.deleted = false;
+          this.similarPredictionsSearched = true;
+          this.predictionstoShow.update(() => this.predictionsFusing);
+        } catch (err) {
+          console.error('Error loading prediction:', err);
+          this.currentPrediction = undefined; // Explicitly reset on error
+          this.blocked = false;
+        }
+      }
       this.blocked = false;
-    });
-    console.log('Similar note:', response.note);
-    this.getSameResponses();
-  }
-
-  sameResponses: Map<number, StudentResponse> = new Map();
-  async getSameResponses() {
-    for (const similar of this.similarPredictions) {
-      // let try1 = await this.getStudentResponse(this.questions!.map(q => q.id!));
-      let response = await this.getStudentResponse4EmptyStudent(
-        this.questions!.map(q => q.id!),
-        similar.studentId! - 1,
-      );
-      this.sameResponses.set(similar.studentId!, response!);
-    }
-  }
-
-  async passToNextNotGradedQuestion() {
-    const nbStudents = this.numberPagesInScan! / this.nbreFeuilleParCopie!;
-    console.log('My note', this.resp);
-    for (let i = 0; i < nbStudents; i++) {
-      if (this.currentStudent < i) {
-        let response = await this.getStudentResponse4EmptyStudent(
-          this.questions!.map(q => q.id!),
-          i,
-        );
-        console.log('Student', i + 1, 'Response:', response);
-        if (response === undefined) {
-          this.currentStudentPaginator = i;
-          this.currentStudent = i;
-          this.loadPrediction();
-          this.ngZone.run(() => {
-            this.router.navigateByUrl('/answer/' + this.examId! + '/' + (this.questionindex! + 1) + '/' + (i + 1));
-          });
-          if (this.dropdownOpen) {
-            this.dropdownOpen = !this.dropdownOpen;
-            this.similarPrediction();
-          }
-          return;
-        }
-      }
-    }
-    for (let i = 0; i < nbStudents; i++) {
-      let response = await this.getStudentResponse4EmptyStudent(
-        this.questions!.map(q => q.id!),
-        i,
-      );
-      console.log('Student', i + 1, 'Response:', response);
-      if (response === undefined) {
-        this.currentStudentPaginator = i;
-        this.currentStudent = i;
-        this.loadPrediction();
-        this.ngZone.run(() => {
-          this.router.navigateByUrl('/answer/' + this.examId! + '/' + (this.questionindex! + 1) + '/' + (i + 1));
-        });
-        if (this.dropdownOpen) {
-          this.dropdownOpen = !this.dropdownOpen;
-          this.similarPrediction();
-        }
-        return;
-      }
-    }
-    // No ungraded responses were found
-    this.messageService.add({
-      severity: 'info',
-      summary: this.translateService.instant('scanexam.noUngradedResponses'),
-    });
-  }
-
-  async passToPreviousNotGradedQuestion() {
-    const nbStudents = this.numberPagesInScan! / this.nbreFeuilleParCopie!;
-    console.log('My note', this.resp);
-    for (let i = this.currentStudent - 1; i >= 0; i--) {
-      if (this.currentStudent > i) {
-        let response = await this.getStudentResponse4EmptyStudent(
-          this.questions!.map(q => q.id!),
-          i,
-        );
-        console.log('Student', i + 1, 'Response:', response);
-        if (response === undefined) {
-          this.currentStudentPaginator = i;
-          this.currentStudent = i;
-          this.loadPrediction();
-          this.ngZone.run(() => {
-            this.router.navigateByUrl('/answer/' + this.examId! + '/' + (this.questionindex! + 1) + '/' + (i + 1));
-          });
-          if (this.dropdownOpen) {
-            this.dropdownOpen = !this.dropdownOpen;
-            this.similarPrediction();
-          }
-          return;
-        }
-      }
-    }
-    for (let i = nbStudents - 1; i >= 0; i--) {
-      let response = await this.getStudentResponse4EmptyStudent(
-        this.questions!.map(q => q.id!),
-        i,
-      );
-      console.log('Student', i + 1, 'Response:', response);
-      if (response === undefined) {
-        this.currentStudentPaginator = i;
-        this.currentStudent = i;
-        this.loadPrediction();
-        this.ngZone.run(() => {
-          this.router.navigateByUrl('/answer/' + this.examId! + '/' + (this.questionindex! + 1) + '/' + (i + 1));
-        });
-        if (this.dropdownOpen) {
-          this.dropdownOpen = !this.dropdownOpen;
-          this.similarPrediction();
-        }
-        return;
-      }
-    }
-    // No ungraded responses were found
-    this.messageService.add({
-      severity: 'info',
-      summary: this.translateService.instant('scanexam.noUngradedResponses'),
-    });
-  }
-
-  async updateSimilarGrade(studentId: number, newGrade: number) {
-    if (this.blocked) return;
-
-    const response = this.sameResponses.get(studentId);
-    if (response) {
-      response.note = newGrade;
-      this.updateResponseRequest(response).subscribe(sr1 => {
-        this.sameResponses.set(studentId, sr1.body!);
-      });
-    }
-  }
-
-  async updateSimilarComment(studentId: number, comment: any) {
-    if (this.blocked) return;
-
-    const response = this.sameResponses.get(studentId);
-    if (response) {
-      this.updateResponseRequest(response).subscribe(sr1 => {
-        this.sameResponses.set(studentId, sr1.body!);
-      });
-    }
-  }
-
-  async removeSimilarComment(studentId: number, commentToRemove: any) {
-    if (this.blocked) return;
-
-    const response = this.sameResponses.get(studentId);
-    if (response) {
-      response.textcomments = response.textcomments?.filter(c => c.id !== commentToRemove.id);
-      this.updateResponseRequest(response).subscribe(sr1 => {
-        this.sameResponses.set(studentId, sr1.body!);
-      });
-    }
-  }
-
-  getSimilarGrade(studentId: number): number {
-    return this.sameResponses.get(studentId!)?.note!;
-  }
-
-  removedSimilarComment(studentId: number, index: number) {
-    const response = this.sameResponses.get(studentId);
-    if (response && response.textcomments) {
-      const commentToRemove = response.textcomments[index];
-      response.textcomments.splice(index, 1);
-      this.removeSimilarComment(studentId, commentToRemove);
-    }
-  }
-
-  predictionsForSearch: IPrediction[] = [];
-  searchControl = new FormControl('');
-  filteredSearchedPredictions: IPrediction[] = [];
-  private searchSubscription?: Subscription;
-
-  async loadPredictionsForSearch() {
-    try {
-      const req = {
-        page: 0,
-        size: 500,
-      };
-
-      if (this.similarPredictions.length > 0) {
-        this.predictionsForSearch = this.similarPredictions.filter(
-          prediction => prediction.examId === this.examId && prediction.questionId == this.questionId,
-        );
-        console.log('Predictions for search:', this.predictionsForSearch);
-        this.filterSearchedPredictions();
-      } else {
-        console.warn('No predictions found for search.');
-      }
-    } catch (err) {
-      console.error('Error fetching predictions for search', err);
     }
   }
 
@@ -3630,12 +3493,78 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
     });
   }
 
-  searchedTerm: string = '';
+  dofilterByText() {
+    let predictionsF = this.predictionsFusing;
+    if (this.filterPredictionsWithNotes) {
+      predictionsF = this.predictionsFusingWithoutStudentResponse;
+    } else if (this.filterallexamsheets && !this.filterPredictionsWithNotes) {
+      predictionsF = this.allpredictions;
+    } else {
+      predictionsF = this.allpredictionsgWithoutStudentResponse;
+    }
+    if (this.searchedTerm && this.searchedTerm.length > 2) {
+      const p = predictionsF.filter(prediction => (prediction.text ?? '').toLowerCase().includes(this.searchedTerm.toLowerCase()));
+      if (p.length <= 30) {
+        this.toomuchsimilar = false;
+        this.blocked = true;
+
+        this.prefetchImage(p).then(() => {
+          this.predictionstoShow.update(() => [...p]);
+          this.blocked = false;
+        });
+      } else {
+        this.toomuchsimilar = true;
+        this.predictionstoShow.update(() => []);
+      }
+    } else if (predictionsF.length <= 30) {
+      this.toomuchsimilar = false;
+      this.blocked = true;
+      this.prefetchImage(predictionsF).then(() => {
+        this.predictionstoShow.update(() => [...predictionsF]);
+        this.blocked = false;
+      });
+    } else {
+      this.toomuchsimilar = true;
+      this.predictionstoShow.update(() => []);
+    }
+  }
+
   filterSearchedPredictions(searchTerm: string = '') {
     this.searchedTerm = searchTerm;
-    this.filteredSearchedPredictions = this.predictionsForSearch.filter(prediction =>
-      (prediction.text ?? '').toLowerCase().includes(searchTerm.toLowerCase()),
-    );
+    this.dofilterByText();
     this.changeDetector.detectChanges();
+  }
+
+  updateFilteredSimilarPredictions() {
+    this.dofilterByText();
+  }
+
+  async goToCopie(event: any, pageMin: number, pageMax: number) {
+    const questionIndex = this.questionindex4shortcut! + 1;
+
+    if (event.ctrlKey || event.metaKey) {
+      if (questionIndex > 0 && Number.isInteger(pageMin / (pageMax + 1 - pageMin) + 1)) {
+        this.ngZone.run(() => {
+          const url = this.router.serializeUrl(
+            this.router.createUrlTree(['/answer/' + this.examId + '/' + questionIndex + '/' + (pageMin / (pageMax + 1 - pageMin) + 1)]),
+          );
+          if ('/' !== this.applicationConfigService.getFrontUrl()) {
+            if (this.applicationConfigService.getFrontUrl().endsWith('/') && url.startsWith('/')) {
+              window.open(this.applicationConfigService.getFrontUrl().slice(0, -1) + url, '_blank');
+            } else {
+              window.open(this.applicationConfigService.getFrontUrl() + url, '_blank');
+            }
+          } else {
+            window.open(url, '_blank');
+          }
+        });
+      }
+    } else {
+      if (questionIndex > 0 && Number.isInteger(pageMin / (pageMax + 1 - pageMin) + 1)) {
+        this.ngZone.run(() => {
+          this.router.navigate(['/answer/' + this.examId + '/' + questionIndex + '/' + (pageMin / (pageMax + 1 - pageMin) + 1)]);
+        });
+      }
+    }
   }
 }
