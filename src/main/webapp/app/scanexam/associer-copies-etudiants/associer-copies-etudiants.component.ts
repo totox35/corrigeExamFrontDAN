@@ -1,12 +1,10 @@
 /* eslint-disable @typescript-eslint/member-ordering */
 /* eslint-disable prefer-const */
 /* eslint-disable no-console */
-
-import { AfterViewInit, Component, HostListener, OnInit, ViewChild, effect } from '@angular/core';
+import { AfterViewInit, Component, HostListener, OnInit, ViewChild, effect, signal } from '@angular/core';
 import { ExamService } from '../../entities/exam/service/exam.service';
 import { ZoneService } from '../../entities/zone/service/zone.service';
 import { CourseService } from 'app/entities/course/service/course.service';
-import { MltComponent } from '../mlt/mlt.component';
 import { ActivatedRoute, Router } from '@angular/router';
 import { ConfirmationService, MessageService, SelectItem, PrimeTemplate } from 'primeng/api';
 import { IExam } from 'app/entities/exam/exam.model';
@@ -37,13 +35,15 @@ import { ButtonDirective, Button } from 'primeng/button';
 import { SliderModule } from 'primeng/slider';
 import { TooltipModule } from 'primeng/tooltip';
 import { FormsModule } from '@angular/forms';
-import { InputSwitchModule } from 'primeng/inputswitch';
+import { ToggleSwitchModule } from 'primeng/toggleswitch';
 import { TranslateDirective } from '../../shared/language/translate.directive';
-import { SidebarModule } from 'primeng/sidebar';
+import { DrawerModule } from 'primeng/drawer';
 import { GalleriaModule } from 'primeng/galleria';
 import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { BlockUIModule } from 'primeng/blockui';
 import { ToastModule } from 'primeng/toast';
+import { ProgressBarModule } from 'primeng/progressbar';
+import { MLTService } from '../mlt/mlt.service';
 
 export interface IPage {
   image?: ImageData;
@@ -88,7 +88,7 @@ interface PredictResult {
   selector: 'jhi-associer-copies-etudiants',
   templateUrl: './associer-copies-etudiants.component.html',
   styleUrls: ['./associer-copies-etudiants.component.scss'],
-  providers: [ConfirmationService, MessageService, DialogService, MltComponent],
+  providers: [ConfirmationService, MessageService, DialogService],
   standalone: true,
   imports: [
     ToastModule,
@@ -97,9 +97,9 @@ interface PredictResult {
     GalleriaModule,
     PrimeTemplate,
     KeyboardShortcutsModule,
-    SidebarModule,
+    DrawerModule,
     TranslateDirective,
-    InputSwitchModule,
+    ToggleSwitchModule,
     FormsModule,
     TooltipModule,
     SliderModule,
@@ -111,6 +111,7 @@ interface PredictResult {
     ListboxModule,
     NgClass,
     TranslateModule,
+    ProgressBarModule,
   ],
 })
 export class AssocierCopiesEtudiantsComponent implements OnInit, AfterViewInit {
@@ -121,6 +122,7 @@ export class AssocierCopiesEtudiantsComponent implements OnInit, AfterViewInit {
     return this.list;
   }
 
+  remainingFree = signal(0);
   faHouseSignal = faHouseSignal;
   blocked = false;
   examId = '';
@@ -180,6 +182,10 @@ export class AssocierCopiesEtudiantsComponent implements OnInit, AfterViewInit {
   nameImageImg?: string;
   firstnameImageImg?: string;
   ineImageImg?: string;
+  nameImageImg_ImgData?: ImageData;
+  firstnameImageImg_ImgData?: ImageData;
+  ineImageImg_ImgData?: ImageData;
+
   nameImageImgDebug?: string;
   firstnameImageImgDebug?: string;
   ineImageImgDebug?: string;
@@ -228,7 +234,6 @@ export class AssocierCopiesEtudiantsComponent implements OnInit, AfterViewInit {
     public studentService: StudentService,
     protected activatedRoute: ActivatedRoute,
     public confirmationService: ConfirmationService,
-    private mltcomponent: MltComponent,
     public router: Router,
     private alignImagesService: AlignImagesService,
     public messageService: MessageService,
@@ -238,6 +243,7 @@ export class AssocierCopiesEtudiantsComponent implements OnInit, AfterViewInit {
     private translateService: TranslateService,
     public dialogService: DialogService,
     private titleService: Title,
+    private mltService: MLTService,
   ) {
     effect(
       () => {
@@ -290,6 +296,8 @@ export class AssocierCopiesEtudiantsComponent implements OnInit, AfterViewInit {
 
               this.refreshStudentList().then(() => {
                 console.timeLog('loadpage', 'after loadstudentList');
+                this.countRemainingFreeSheets();
+
                 this.loadImage().then(() => {
                   this.blocked = false;
                   console.timeEnd('loadpage');
@@ -363,18 +371,21 @@ export class AssocierCopiesEtudiantsComponent implements OnInit, AfterViewInit {
       this.predictionprecision = res[0].predictionprecision;
       this.recognizedStudent = res[0].recognizedStudent;
       if (res[0].nameImage) {
+        this.nameImageImg_ImgData = res[0].nameImage;
         this.nameImageImg = this.imagedata_to_image(res[0].nameImage);
       }
       if (this.debug && res[0].nameImageDebug) {
         this.nameImageImgDebug = this.imagedata_to_image(res[0].nameImageDebug);
       }
       if (res[0].firstnameImage) {
+        this.firstnameImageImg_ImgData = res[0].firstnameImage;
         this.firstnameImageImg = this.imagedata_to_image(res[0].firstnameImage);
       }
       if (this.debug && res[0].firstnameImageDebug) {
         this.firstnameImageImgDebug = this.imagedata_to_image(res[0].firstnameImageDebug);
       }
       if (res[0].ineImage) {
+        this.ineImageImg_ImgData = res[0].ineImage;
         this.ineImageImg = this.imagedata_to_image(res[0].ineImage);
       }
       if (this.debug && res[0].ineImageDebug) {
@@ -725,6 +736,7 @@ export class AssocierCopiesEtudiantsComponent implements OnInit, AfterViewInit {
       }
     }
     await this.refreshStudentList();
+    this.countRemainingFreeSheets();
   }
 
   async unbindCurrentStudent(): Promise<void> {
@@ -741,59 +753,8 @@ export class AssocierCopiesEtudiantsComponent implements OnInit, AfterViewInit {
       await this.refreshStudentList();
       this.blocked = false;
     }
+    this.countRemainingFreeSheets();
   }
-  /*
-
-    // old version
-    const examSheet4CurrentStudent: IExamSheet[] = (
-      this.students.filter(s => this.selectionStudents.map((s1: IStudent) => s1.id)!.includes(s.id)).map(s => s.examSheets) as any
-    )
-      .flat()
-      .filter((ex: any) => ex?.scanId === this.exam.scanfileId);
-    // Récupère la sheet courante.
-    const examSheet4CurrentPage: IExamSheet[] = (
-      this.students
-        .filter(
-          s =>
-            s.examSheets?.some(ex => ex?.scanId === this.exam.scanfileId && ex.pagemin === this.currentStudent * this.nbreFeuilleParCopie),
-        )
-        .map(s => s.examSheets) as any
-    ).flat();
-
-    // Passe cette sheet à -1 -1. sémantique plus associé
-
-    for (const ex2 of examSheet4CurrentPage.filter(ex => !examSheet4CurrentStudent.map(ex1 => ex1.id).includes(ex!.id))) {
-      ex2!.pagemin = -1;
-      ex2!.pagemax = -1;
-      await firstValueFrom(this.sheetService.update(ex2));
-    }
-
-    // Pour l'étudiant sélectionné. récupère la sheet. Si elle existe, on met à jour les bonnes pages sinon on crée la page.
-
-    const selectedStudent = this.students.filter(s => this.selectionStudents.map((s1: IStudent) => s1.id)!.includes(s.id));
-    for (const student of selectedStudent) {
-      const examS4Student = student.examSheets?.filter((ex: IExamSheet) => ex?.scanId === this.exam.scanfileId);
-      if (examS4Student !== undefined && examS4Student.length > 0) {
-        for (const ex of examS4Student) {
-          ex.pagemin = this.currentStudent * this.nbreFeuilleParCopie;
-          ex.pagemax = (this.currentStudent + 1) * this.nbreFeuilleParCopie - 1;
-          await firstValueFrom(this.sheetService.update(ex));
-        }
-      } else {
-        const sheet: IExamSheet = {
-          name: uuid(),
-          pagemin: this.currentStudent * this.nbreFeuilleParCopie,
-          pagemax: (this.currentStudent + 1) * this.nbreFeuilleParCopie - 1,
-          scanId: this.exam.scanfileId,
-          students: this.selectionStudents,
-        };
-        const e = await firstValueFrom(this.sheetService.create(sheet));
-        for (const s1 of this.selectionStudents) {
-          s1.examSheets?.push(e.body!);
-          await firstValueFrom(this.studentService.update(s1));
-        }
-      }
-    }*/
 
   showGalleria(): void {
     this.blocked = true;
@@ -881,6 +842,20 @@ export class AssocierCopiesEtudiantsComponent implements OnInit, AfterViewInit {
       });
     });
   }
+  countRemainingFreeSheets(): void {
+    const examSheet4Exam: IExamSheet[] = (this.students.map(s => s.examSheets) as any)
+      .flat()
+      .filter((ex: any) => ex?.scanId === this.exam.scanfileId);
+    let countAllFreeSheet: number = 0;
+    for (let i = 0; i < Math.floor(this.numberPagesInScan / this.nbreFeuilleParCopie); i++) {
+      if (!examSheet4Exam.map(sheet => sheet.pagemin! / this.nbreFeuilleParCopie).includes(i)) {
+        countAllFreeSheet = countAllFreeSheet + 1;
+      }
+    }
+    let l = Math.floor(this.numberPagesInScan / this.nbreFeuilleParCopie) - countAllFreeSheet;
+    l = (l / (this.numberPagesInScan! / this.nbreFeuilleParCopie!)) * 100;
+    this.remainingFree.set(l);
+  }
 
   computeFreeSheets(): number[] {
     const examSheet4Exam: IExamSheet[] = (this.students.map(s => s.examSheets) as any)
@@ -892,6 +867,7 @@ export class AssocierCopiesEtudiantsComponent implements OnInit, AfterViewInit {
         listAllFreeSheet.push(i);
       }
     }
+
     return listAllFreeSheet;
   }
 
@@ -901,8 +877,10 @@ export class AssocierCopiesEtudiantsComponent implements OnInit, AfterViewInit {
     this.examService.deleteAllExamSheets(+this.examId).subscribe(() => {
       this.filterbindstudent = false;
       this.preferenceService.saveFilterStudentPreference(false);
-      this.refreshStudentList();
-      this.blocked = false;
+      this.refreshStudentList().then(() => {
+        this.countRemainingFreeSheets();
+        this.blocked = false;
+      });
     });
   }
 
@@ -916,6 +894,8 @@ export class AssocierCopiesEtudiantsComponent implements OnInit, AfterViewInit {
       const ref = this.dialogService.open(AllbindingsComponent, {
         header: '',
         width: '100%',
+        closable: true,
+        maximizable: true,
         data: {
           students: res1,
           nbreFeuilleParCopie: this.nbreFeuilleParCopie,
@@ -927,6 +907,7 @@ export class AssocierCopiesEtudiantsComponent implements OnInit, AfterViewInit {
         this.refreshStudentList().then(() => {
           this.loadImage().then(() => {
             this.blocked = false;
+            this.countRemainingFreeSheets();
           });
         });
       });
@@ -941,6 +922,7 @@ export class AssocierCopiesEtudiantsComponent implements OnInit, AfterViewInit {
 
   gotopreviousnonboundsheet(): void {
     const free = this.computeFreeSheets();
+
     const s = free.find(v => v < this.currentStudent);
     if (s !== undefined) {
       this.goToStudent(s);
@@ -1801,8 +1783,26 @@ export class AssocierCopiesEtudiantsComponent implements OnInit, AfterViewInit {
     return s?.replace(/[^A-Za-z0-9\[\] ]/g, a => this.latinMap().get(a) ?? a);
   }
 
-  executeMLTScript() {
-    let full_name = [this.nameImageImg, this.firstnameImageImg].filter((img): img is string => img !== undefined);
-    this.mltcomponent.executeMLT(full_name);
+  async executeMLTScript(): Promise<void> {
+    let nom: string | undefined = '';
+    let prenom: string | undefined = '';
+    if (this.nameImageImg_ImgData) {
+      nom = await this.mltService.executeMLTFromImagData(
+        this.nameImageImg_ImgData!,
+        this.nameImageImg_ImgData!.width,
+        this.nameImageImg_ImgData!.height,
+      );
+    }
+    if (this.firstnameImageImg_ImgData) {
+      prenom = await this.mltService.executeMLTFromImagData(
+        this.firstnameImageImg_ImgData!,
+        this.firstnameImageImg_ImgData!.width,
+        this.firstnameImageImg_ImgData!.height,
+      );
+    }
+    this.recognizedStudent = {
+      name: this.latinise(nom),
+      firstname: this.latinise(prenom),
+    };
   }
 }

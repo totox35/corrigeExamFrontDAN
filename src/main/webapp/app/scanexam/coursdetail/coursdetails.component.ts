@@ -24,8 +24,8 @@ import { Title } from '@angular/platform-browser';
 import { ExportResultService, formatDateTime } from '../exportresult.service';
 import { FaStackComponent, FaIconComponent, FaStackItemSizeDirective } from '@fortawesome/angular-fontawesome';
 import { UsableTextInputComponent } from '../../shared/usable-text-input/usable-text-input.component';
-import { InputSwitchModule } from 'primeng/inputswitch';
-import { SidebarModule } from 'primeng/sidebar';
+import { ToggleSwitchModule } from 'primeng/toggleswitch';
+import { DrawerModule } from 'primeng/drawer';
 import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { BlockUIModule } from 'primeng/blockui';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
@@ -72,8 +72,8 @@ export interface CacheDownloadNotification {
     ConfirmDialogModule,
     BlockUIModule,
     ProgressSpinnerModule,
-    SidebarModule,
-    InputSwitchModule,
+    DrawerModule,
+    ToggleSwitchModule,
     NgFor,
     UsableTextInputComponent,
     FaStackComponent,
@@ -315,6 +315,9 @@ export class CoursdetailsComponent implements OnInit {
           data: {
             courseid: this.course.id,
           },
+          closable: true,
+          closeOnEscape: true,
+          maximizable: true,
           header: data1,
           width: '70%',
         });

@@ -2,9 +2,8 @@ import { Component, OnInit } from '@angular/core';
 import { PredictionService } from 'app/entities/prediction/service/prediction.service';
 import { Router } from '@angular/router';
 import { IPrediction } from '../prediction.model';
-import { HttpResponse } from '@angular/common/http'; // Import HttpResponse
 import { NgIf, NgFor } from '@angular/common';
-import { forkJoin } from 'rxjs';
+import { forkJoin, firstValueFrom } from 'rxjs';
 import { TranslateDirective } from 'app/shared/language/translate.directive';
 
 @Component({
@@ -21,15 +20,15 @@ export class PredictionListComponent implements OnInit {
     private router: Router,
   ) {}
 
-  ngOnInit(): void {
-    this.loadAll();
+  async ngOnInit(): Promise<void> {
+    await this.loadAll();
   }
 
   // Method to load all predictions
-  loadAll(): void {
-    this.predictionService.query().subscribe((response: HttpResponse<IPrediction[]>) => {
-      this.predictions = response.body || [];
-    });
+  async loadAll(): Promise<void> {
+    const response = await firstValueFrom(this.predictionService.query());
+    this.predictions = response.body || [];
+    // eslint-disable-next-line no-console
     console.log('Loaded predictions:', this.predictions);
   }
 
@@ -44,53 +43,47 @@ export class PredictionListComponent implements OnInit {
   }
 
   // Method to delete a prediction
-  delete(id: number): void {
+  async delete(id: number): Promise<void> {
     if (confirm('Are you sure you want to delete this prediction?')) {
-      this.predictionService.delete(id).subscribe({
-        next: () => {
-          console.log(`Deleted prediction with id: ${id}`);
-          this.loadAll(); // Reload the list after deletion
-        },
-        error: err => {
-          console.error(`Error deleting prediction with id ${id}:`, err);
-          alert(`Failed to delete prediction with id ${id}. Please try again.`);
-        },
-      });
+      try {
+        await firstValueFrom(this.predictionService.delete(id));
+        await this.loadAll(); // Reload the list after deletion
+      } catch (err: any) {
+        alert(`Failed to delete prediction with id ${id}. Please try again.`);
+        console.error(err);
+      }
     }
   }
 
-  deleteByExam(examId: string): void {
-    const numericExamId = parseInt(examId, 10);
-    if (!numericExamId) {
-      alert('Please enter a valid exam ID');
+  async deleteByQuestion(questionId: string): Promise<void> {
+    const numericQuestionId = parseInt(questionId, 10);
+    if (!numericQuestionId) {
+      alert('Please enter a valid question ID');
       return;
     }
 
-    const predictionsToDelete = this.predictions.filter(p => p.examId && parseInt(p.examId, 10) === numericExamId);
+    const predictionsToDelete = this.predictions.filter(p => p.questionId === numericQuestionId);
 
     if (predictionsToDelete.length === 0) {
-      alert(`No predictions found for exam ${numericExamId}`);
+      alert(`No predictions found for exam ${numericQuestionId}`);
       return;
     }
 
-    if (confirm(`Are you sure you want to delete all ${predictionsToDelete.length} predictions for exam ${numericExamId}?`)) {
+    if (confirm(`Are you sure you want to delete all ${predictionsToDelete.length} predictions for exam ${numericQuestionId}?`)) {
       const deleteObservables = predictionsToDelete.filter(p => p.id !== undefined).map(p => this.predictionService.delete(p.id!));
 
-      forkJoin(deleteObservables).subscribe({
-        next: () => {
-          this.loadAll();
-          alert(`Successfully deleted ${predictionsToDelete.length} predictions for exam ${numericExamId}`);
-        },
-        error: err => {
-          console.error(`Error deleting predictions for exam ${numericExamId}:`, err);
-          alert(`Failed to delete some or all predictions for exam ${numericExamId}. Please try again.`);
-          this.loadAll();
-        },
-      });
+      try {
+        await firstValueFrom(forkJoin(deleteObservables));
+        await this.loadAll();
+      } catch (err: any) {
+        console.error(`Error deleting predictions for question ${numericQuestionId}:`, err);
+        alert(`Failed to delete some or all predictions for question ${numericQuestionId}. Please try again.`);
+        await this.loadAll();
+      }
     }
   }
 
-  deleteAllPredictions(): void {
+  async deleteAllPredictions(): Promise<void> {
     const predictionsToDelete = this.predictions.filter(p => p.id !== undefined).map(p => this.predictionService.delete(p.id!));
 
     if (predictionsToDelete.length === 0) {
@@ -99,17 +92,15 @@ export class PredictionListComponent implements OnInit {
     }
 
     if (confirm('Are you sure you want to delete all predictions?')) {
-      forkJoin(predictionsToDelete).subscribe({
-        next: () => {
-          this.loadAll();
-          alert('Successfully deleted all predictions');
-        },
-        error: err => {
-          console.error('Error deleting all predictions:', err);
-          alert('Failed to delete some or all predictions. Please try again.');
-          this.loadAll();
-        },
-      });
+      try {
+        await firstValueFrom(forkJoin(predictionsToDelete));
+        await this.loadAll();
+        alert('Successfully deleted all predictions');
+      } catch (err: any) {
+        console.error('Error deleting all predictions:', err);
+        alert('Failed to delete some or all predictions. Please try again.');
+        await this.loadAll();
+      }
     }
   }
 }

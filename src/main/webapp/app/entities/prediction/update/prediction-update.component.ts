@@ -2,11 +2,11 @@ import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { PredictionService } from '../service/prediction.service';
 import { IPrediction } from '../prediction.model';
-import { FormsModule } from '@angular/forms';
 
 @Component({
   selector: 'app-prediction-update',
   templateUrl: './prediction-update.component.html',
+  standalone: true,
 })
 export class PredictionUpdateComponent implements OnInit {
   prediction: IPrediction = { id: undefined, text: '', questionNumber: undefined };
@@ -37,6 +37,7 @@ export class PredictionUpdateComponent implements OnInit {
     this.router.navigate(['/predictions']);
   }
 
+  // eslint-disable-next-line @typescript-eslint/member-ordering
   cancel(): void {
     this.router.navigate(['/predictions']);
   }
