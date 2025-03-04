@@ -252,17 +252,23 @@ export class ImageAccessComponent implements OnInit {
         if (predictionId) {
           // First use CoupageDimageService
           const coupageResponse = await firstValueFrom(this.coupageDimageService.runScript(base64Image));
+
           let prediction = '';
 
-          // Process each refined line
-          if (coupageResponse.refinedLines) {
-            for (const refinedLine of coupageResponse.refinedLines) {
-              const base64Line = `data:image/png;base64,${refinedLine}`;
-              const lineResult = await this.mltcomponent.executeMLT(base64Line);
-              if (lineResult) {
-                prediction += lineResult + '\n';
-              }
+          if (coupageResponse.refinedLines && coupageResponse.refinedLines.length > 0) {
+            try {
+              // Convert refined lines to base64 format in one step
+              const base64Lines = coupageResponse.refinedLines.map((line: any) => `data:image/png;base64,${line}`);
+
+              // Send the whole batch to MLT at once
+              const results = await this.mltcomponent.executeMLT(base64Lines);
+
+              // Ensure results are correctly ordered and joined
+              prediction = results!.join('\n');
+            } catch (error) {
+              console.error('Error processing refined lines in batch:', error);
             }
+
             // Clear refined lines after processing
             coupageResponse.refinedLines = [];
           }

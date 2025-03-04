@@ -1802,7 +1802,7 @@ export class AssocierCopiesEtudiantsComponent implements OnInit, AfterViewInit {
   }
 
   executeMLTScript() {
-    this.mltcomponent.executeMLT(this.nameImageImg);
-    this.mltcomponent.executeMLT(this.firstnameImageImg);
+    let full_name = [this.nameImageImg, this.firstnameImageImg].filter((img): img is string => img !== undefined);
+    this.mltcomponent.executeMLT(full_name);
   }
 }

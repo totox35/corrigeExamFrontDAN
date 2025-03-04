@@ -315,7 +315,7 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
   noteStep = 0;
   filterPredictionsWithNotes: boolean = false;
 
-  developementMode: boolean = false;
+  developementMode: boolean = true;
 
   constructor(
     public examService: ExamService,
@@ -3201,25 +3201,35 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
           next: async response => {
             this.refinedLines = response.refinedLines || [];
             const currentPageIndex = this.questionindex;
-            let prediction: string = '';
-            for (let i = 0; i < this.refinedLines.length; i++) {
+
+            if (this.refinedLines.length > 0) {
               try {
-                const base64Line = `data:image/png;base64,${this.refinedLines[i]}`;
-                const result = await this.mltcomponent.executeMLT(base64Line);
-                prediction += result + '\n';
+                // Convert refined lines to base64 format while keeping the index
+                const base64Lines = this.refinedLines.map((line, index) => ({
+                  index,
+                  base64: `data:image/png;base64,${line}`,
+                }));
+
+                // Send ordered batch to MLT
+                console.log('I am sending the batch now:', base64Lines);
+                const results = await this.mltcomponent.executeMLT(base64Lines.map(item => item.base64));
+
+                // Ensure predictions are stored in the correct order
+                const sortedPredictions = base64Lines.map(item => results![item.index]);
+                const prediction = sortedPredictions.join('\n');
+
+                this.predictionsDic[currentPageIndex] = prediction;
+
+                // Store batch prediction
+                this.storePrediction(prediction, question_id, exam_id, student_id, question_number, prediction_id);
+                console.log('Before resume');
+                this.queueService.resumeQueue();
+                this.output = prediction;
+                this.error = '';
               } catch (error) {
-                console.error('Error processing refined line ', i, ':', error);
+                console.error('Error processing refined lines:', error);
               }
             }
-            this.predictionsDic[currentPageIndex] = prediction;
-
-            // Now store the prediction with the actual ID
-            this.storePrediction(prediction, question_id, exam_id, student_id, question_number, prediction_id);
-            console.log('Before resume');
-            this.queueService.resumeQueue();
-            // Update the output for display
-            this.output = prediction;
-            this.error = '';
           },
           error: error => {
             console.error('Error refining the image:', error);

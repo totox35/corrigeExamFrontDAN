@@ -328,45 +328,38 @@ export class MltComponent {
     }
   }
 
-  async executeMLT(base64: any): Promise<string | undefined> {
+  async executeMLT(base64List: string[]): Promise<string[] | undefined> {
     this.initializeOrt();
-    // Paramètres de prétraitement (issus de la configuration ou d'un modèle)
-    const channelNb: number = 1; // Monochrome
-    const padValue: number = 0.0;
-    const padWidthRight: number = 64;
-    const padWidthLeft: number = 64;
-    const mean: number = 238.6531 / 255;
-    const std: number = 43.4356 / 255;
-    const targetHeight: number = 128;
+
+    // Preprocessing parameters
+    const channelNb = 1; // Monochrome
+    const padValue = 0.0;
+    const padWidthRight = 64;
+    const padWidthLeft = 64;
+    const mean = 238.6531 / 255;
+    const std = 43.4356 / 255;
+    const targetHeight = 128;
+    const modelPath: string = '../../content/classifier/trace_mlt-4modern_hw_rimes_lines-v3+synth-1034184_best_encoder.tar.onnx';
 
     try {
-      // Chargement du fichier image
-      //const imageFileUrl = 'content/images/refined_line_2.png'; // Chemin relatif à partir de la racine du serveur web
-      //const cleanedBase64 = await this.removeRectangles(base64);
-      const response = await fetch(base64);
-      const blob = await response.blob();
-      const imageFile = new File([blob], 'my_image.png', { type: blob.type });
-      // Prétraitement de l'image
-      const preprocessedImage = await this.preprocessImage(
-        imageFile,
-        channelNb,
-        padValue,
-        padWidthRight,
-        padWidthLeft,
-        mean,
-        std,
-        targetHeight,
+      // Load and preprocess all images in parallel
+      const preprocessedImages = await Promise.all(
+        base64List.map(async base64 => {
+          const response = await fetch(base64);
+          const blob = await response.blob();
+          const imageFile = new File([blob], 'my_image.png', { type: blob.type });
+
+          return this.preprocessImage(imageFile, channelNb, padValue, padWidthRight, padWidthLeft, mean, std, targetHeight);
+        }),
       );
-      // Spécification du chemin du modèle ONNX
-      const modelPath: string = '../../content/classifier/trace_mlt-4modern_hw_rimes_lines-v3+synth-1034184_best_encoder.tar.onnx';
 
-      // Exécution de l'inférence
-      const prediction = await this.runInference(preprocessedImage, modelPath);
+      // Run inference on the batch
+      const predictions = await Promise.all(preprocessedImages.map(async image => this.runInference(image, modelPath)));
 
-      console.log('Prediction:', prediction);
-      return prediction;
+      console.log('Batch Predictions:', predictions);
+      return predictions; // Return all predictions in order
     } catch (error) {
-      console.error('Error in executeMLT:', error);
+      console.error('Error in executeMLT (Batch Mode):', error);
       return undefined;
     }
   }

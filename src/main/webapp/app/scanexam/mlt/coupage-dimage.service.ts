@@ -17,7 +17,7 @@ export class CoupageDimageService {
 
     return this.http.post(this.apiUrl, body).pipe(
       map((response: any) => {
-        console.log('Response:', response);
+        //console.log('Response:', response);
         return response;
       }),
       catchError(error => {
