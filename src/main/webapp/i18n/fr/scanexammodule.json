@@ -562,6 +562,7 @@
     "similarResults": "Résultats similaires",
     "nosimilarResults": "Aucune réponse similaire trouvée",
     "displaySimilarAnswers": "Afficher les réponses similaires",
+    "noPredictionDoAnalyseOCR": "Aucune prédiction trouvée pour cette question. Veuillez effectuer une analyse OCR d'abord.",
     "noGradeAvailable": "⚠️ Pas de note disponible",
     "applyNoteToSelected": "Appliquer la note et les commentaires aux réponse(s) sélectionnée(s)",
     "applyNoteToSelectedTooltip": "Permet d'appliquer la note et les commentaires de la réponses en cours de corrections aux réponse(s) sélectionnée(s) ci dessous",

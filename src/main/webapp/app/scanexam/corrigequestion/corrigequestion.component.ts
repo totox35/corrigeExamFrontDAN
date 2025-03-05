@@ -313,7 +313,7 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
   maximumNote = 0;
   noteStep = 0;
 
-  developementMode: boolean = true;
+  developementMode: boolean = false;
 
   constructor(
     public examService: ExamService,
@@ -3461,29 +3461,40 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
   }
 
   async initSimilarPrediction() {
-    this.dropdownOpen = !this.dropdownOpen;
-    this.filterPredictionsWithNotes = false;
-    if (this.dropdownOpen) {
-      this.blocked = true;
-      if (this.allpredictions.length === 0) {
-        await this.loadPrediction();
-      }
-
-      if (this.allpredictions.length > 0) {
-        this.setupSearchListener();
-
-        try {
-          this.prefetchImage(this.predictionsFusing);
-          this.deleted = false;
-          this.similarPredictionsSearched = true;
-          this.predictionstoShow.update(() => this.predictionsFusing);
-        } catch (err) {
-          console.error('Error loading prediction:', err);
-          this.currentPrediction = undefined; // Explicitly reset on error
-          this.blocked = false;
+    if (this.currentPrediction == undefined) {
+      // Show popup/alert
+      this.confirmationService.confirm({
+        message: this.translateService.instant('scanexam.noPredictionDoAnalyseOCR'),
+        accept: () => {
+          this.performPrediction4Question();
+        },
+        reject: () => {},
+      });
+    } else {
+      this.dropdownOpen = !this.dropdownOpen;
+      this.filterPredictionsWithNotes = false;
+      if (this.dropdownOpen) {
+        this.blocked = true;
+        if (this.allpredictions.length === 0) {
+          await this.loadPrediction();
         }
+
+        if (this.allpredictions.length > 0) {
+          this.setupSearchListener();
+
+          try {
+            this.prefetchImage(this.predictionsFusing);
+            this.deleted = false;
+            this.similarPredictionsSearched = true;
+            this.predictionstoShow.update(() => this.predictionsFusing);
+          } catch (err) {
+            console.error('Error loading prediction:', err);
+            this.currentPrediction = undefined; // Explicitly reset on error
+            this.blocked = false;
+          }
+        }
+        this.blocked = false;
       }
-      this.blocked = false;
     }
   }
 
