@@ -5,7 +5,7 @@ import { Observable } from 'rxjs';
 import { finalize } from 'rxjs/operators';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 
-import { IResponseGroupe, ResponseGroup } from '../response-group.model';
+import { IResponseGroup, ResponseGroup } from '../response-group.model';
 import { ResponseGroupService } from '../service/response-group.service.component';
 import { NgIf, NgFor } from '@angular/common';
 import { FaIconComponent } from '@fortawesome/angular-fontawesome';
@@ -21,7 +21,7 @@ import { TranslateDirective } from '../../../shared/language/translate.directive
 })
 export class ResponseGroupUpdateComponent implements OnInit {
   isSaving = false;
-  responseGroup: IResponseGroupe | null = null;
+  responseGroup: IResponseGroup | null = null;
   editForm: FormGroup;
 
   constructor(
@@ -45,7 +45,7 @@ export class ResponseGroupUpdateComponent implements OnInit {
     });
   }
 
-  updateForm(responseGroup: IResponseGroupe): void {
+  updateForm(responseGroup: IResponseGroup): void {
     this.editForm.patchValue({
       id: responseGroup.id,
       questionId: responseGroup.questionId,
@@ -67,7 +67,7 @@ export class ResponseGroupUpdateComponent implements OnInit {
     }
   }
 
-  private createFromForm(): IResponseGroupe {
+  private createFromForm(): IResponseGroup {
     return {
       ...new ResponseGroup(),
       id: this.editForm.get(['id'])!.value,
@@ -81,7 +81,7 @@ export class ResponseGroupUpdateComponent implements OnInit {
     };
   }
 
-  protected subscribeToSaveResponse(result: Observable<HttpResponse<IResponseGroupe>>): void {
+  protected subscribeToSaveResponse(result: Observable<HttpResponse<IResponseGroup>>): void {
     result.pipe(finalize(() => this.onSaveFinalize())).subscribe({
       next: () => this.onSaveSuccess(),
       error: () => this.onSaveError(),

@@ -1,48 +1,48 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpResponse } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { IResponseGroupe } from 'app/entities/response-group/response-group.model';
+import { IResponseGroup } from 'app/entities/response-group/response-group.model';
 import { createRequestOption } from 'app/core/request/request-util';
 import { ApplicationConfigService } from 'app/core/config/application-config.service';
 import { getResponseGroupIdentifier } from 'app/entities/response-group/response-group.model';
 
-export type EntityResponseType = HttpResponse<IResponseGroupe>;
-export type EntityArrayResponseType = HttpResponse<IResponseGroupe[]>;
+export type EntityResponseType = HttpResponse<IResponseGroup>;
+export type EntityArrayResponseType = HttpResponse<IResponseGroup[]>;
 
 @Injectable({ providedIn: 'root' })
 export class ResponseGroupService {
-  protected resourceUrl = 'api/responsegroups';
+  protected resourceUrl = 'api/responseGroups';
 
   constructor(
     protected http: HttpClient,
     protected applicationConfigService: ApplicationConfigService,
   ) {
-    this.resourceUrl = this.applicationConfigService.getEndpointFor('api/responsegroups');
+    this.resourceUrl = this.applicationConfigService.getEndpointFor('api/responseGroups');
   }
 
-  create(responseGroup: IResponseGroupe): Observable<EntityResponseType> {
-    return this.http.post<IResponseGroupe>(this.resourceUrl, responseGroup, { observe: 'response' });
+  create(responseGroup: IResponseGroup): Observable<EntityResponseType> {
+    return this.http.post<IResponseGroup>(this.resourceUrl, responseGroup, { observe: 'response' });
   }
 
-  update(responseGroup: IResponseGroupe): Observable<EntityResponseType> {
-    return this.http.put<IResponseGroupe>(this.resourceUrl, responseGroup, {
+  update(responseGroup: IResponseGroup): Observable<EntityResponseType> {
+    return this.http.put<IResponseGroup>(this.resourceUrl, responseGroup, {
       observe: 'response',
     });
   }
 
-  partialUpdate(responseGroup: IResponseGroupe): Observable<EntityResponseType> {
-    return this.http.patch<IResponseGroupe>(`${this.resourceUrl}/${getResponseGroupIdentifier(responseGroup) as number}`, responseGroup, {
+  partialUpdate(responseGroup: IResponseGroup): Observable<EntityResponseType> {
+    return this.http.patch<IResponseGroup>(`${this.resourceUrl}/${getResponseGroupIdentifier(responseGroup) as number}`, responseGroup, {
       observe: 'response',
     });
   }
 
   find(id: number): Observable<EntityResponseType> {
-    return this.http.get<IResponseGroupe>(`${this.resourceUrl}/${id}`, { observe: 'response' });
+    return this.http.get<IResponseGroup>(`${this.resourceUrl}/${id}`, { observe: 'response' });
   }
 
   query(req?: any): Observable<EntityArrayResponseType> {
     const options = createRequestOption(req);
-    return this.http.get<IResponseGroupe[]>(this.resourceUrl, { params: options, observe: 'response' });
+    return this.http.get<IResponseGroup[]>(this.resourceUrl, { params: options, observe: 'response' });
   }
 
   delete(id: number): Observable<HttpResponse<any>> {
@@ -53,8 +53,8 @@ export class ResponseGroupService {
     return this.http.delete(`${this.resourceUrl}/question/${questionId}`, { observe: 'response' });
   }
 
-  findByQuestionId(questionId: number): Observable<EntityResponseType> {
-    return this.http.get(`${this.resourceUrl}/question/${questionId}`, { observe: 'response' });
+  findByQuestionId(questionId: number): Observable<EntityArrayResponseType> {
+    return this.http.get<IResponseGroup[]>(`${this.resourceUrl}/question/${questionId}`, { observe: 'response' });
   }
 
   findByPredictionId(predictionId: number): Observable<EntityResponseType> {
@@ -86,7 +86,7 @@ export class ResponseGroupService {
   }
 
   //To redo properly wth the methods we wish
-  updateAverageEmbedding(responseGroup: IResponseGroupe, predictionEmbedding: number[]): void {
+  updateAverageEmbedding(responseGroup: IResponseGroup, predictionEmbedding: number[]): void {
     if (!predictionEmbedding || predictionEmbedding.length === 0) {
       return;
     }

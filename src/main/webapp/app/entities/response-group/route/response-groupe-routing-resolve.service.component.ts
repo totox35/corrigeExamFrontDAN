@@ -4,21 +4,21 @@ import { Resolve, ActivatedRouteSnapshot, Router } from '@angular/router';
 import { Observable, of, EMPTY } from 'rxjs';
 import { mergeMap } from 'rxjs/operators';
 
-import { IResponseGroupe } from '../response-group.model';
+import { IResponseGroup } from '../response-group.model';
 import { ResponseGroupService } from '../service/response-group.service.component';
 
 @Injectable({ providedIn: 'root' })
-export class ResponseGroupRoutingResolveService implements Resolve<IResponseGroupe | null> {
+export class ResponseGroupRoutingResolveService implements Resolve<IResponseGroup | null> {
   constructor(
     protected service: ResponseGroupService,
     protected router: Router,
   ) {}
 
-  resolve(route: ActivatedRouteSnapshot): Observable<IResponseGroupe | null> {
+  resolve(route: ActivatedRouteSnapshot): Observable<IResponseGroup | null> {
     const id = route.params['id'];
     if (id) {
       return this.service.find(id).pipe(
-        mergeMap((responseGroup: HttpResponse<IResponseGroupe>) => {
+        mergeMap((responseGroup: HttpResponse<IResponseGroup>) => {
           if (responseGroup.body) {
             return of(responseGroup.body);
           } else {

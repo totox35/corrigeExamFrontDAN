@@ -1,6 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
-import { IResponseGroupe } from '../response-group.model';
+import { IResponseGroup } from '../response-group.model';
 import { NgIf, NgFor } from '@angular/common';
 import { forkJoin, firstValueFrom } from 'rxjs';
 import { TranslateDirective } from 'app/shared/language/translate.directive';
@@ -13,7 +13,7 @@ import { ResponseGroupService } from '../service/response-group.service.componen
   imports: [TranslateDirective, NgFor, NgIf],
 })
 export class ResponseGroupListComponent implements OnInit {
-  responseGroups: IResponseGroupe[] = []; // Array to store response groups
+  responseGroups: IResponseGroup[] = []; // Array to store response groups
 
   constructor(
     private responseGroupService: ResponseGroupService,
@@ -34,12 +34,12 @@ export class ResponseGroupListComponent implements OnInit {
 
   // Method to view response group details
   view(id: number): void {
-    this.router.navigate(['/responsegroups', id, 'view']);
+    this.router.navigate(['/responseGroups', id, 'view']);
   }
 
   // Method to edit a response group
   edit(id: number): void {
-    this.router.navigate(['/responsegroups', id, 'edit']);
+    this.router.navigate(['/responseGroups', id, 'edit']);
   }
 
   // Method to delete a response group

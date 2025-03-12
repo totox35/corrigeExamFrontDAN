@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 
-import { IResponseGroupe } from '../response-group.model';
+import { IResponseGroup } from '../response-group.model';
 import { FaIconComponent } from '@fortawesome/angular-fontawesome';
 import { AlertComponent } from '../../../shared/alert/alert.component';
 import { AlertErrorComponent } from '../../../shared/alert/alert-error.component';
@@ -15,7 +15,7 @@ import { NgIf } from '@angular/common';
   imports: [NgIf, TranslateDirective, AlertErrorComponent, AlertComponent, RouterLink, FaIconComponent],
 })
 export class ResponseGroupDetailComponent implements OnInit {
-  responseGroup: IResponseGroupe | null = null;
+  responseGroup: IResponseGroup | null = null;
 
   constructor(protected activatedRoute: ActivatedRoute) {}
 
