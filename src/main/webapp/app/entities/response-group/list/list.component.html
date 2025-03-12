@@ -1,0 +1,50 @@
+<div class="entity-list">
+  <h2 jhiTranslate="global.menu.entities.list.responsegrouplist">Response Group List</h2>
+  <div class="mb-3">
+    <input #questionId type="number" class="form-control w-25 d-inline me-2" placeholder="Enter Exam ID" />
+    <button
+      type="button"
+      class="btn btn-danger"
+      jhiTranslate="global.menu.entities.list.delresponsegroupbyid"
+      (click)="deleteByQuestion(questionId.value)"
+    >
+      <i class="fa fa-trash"></i> Delete All Response Groups for Exam
+    </button>
+    <button
+      type="button"
+      class="btn btn-danger"
+      jhiTranslate="global.menu.entities.list.delallresponsegroups"
+      (click)="deleteAllResponseGroups()"
+    >
+      <i class="fa fa-trash"></i> Delete All Response Groups
+    </button>
+  </div>
+  <table class="table table-striped">
+    <thead>
+      <tr>
+        <th jhiTranslate="global.menu.entities.list.id">ID</th>
+        <th jhiTranslate="global.menu.entities.list.questionid">Question ID</th>
+        <th jhiTranslate="global.menu.entities.list.predictionids">Prediction IDs</th>
+        <th jhiTranslate="global.menu.entities.list.actions">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let responseGroup of responseGroups">
+        <td>{{ responseGroup.id }}</td>
+        <td>{{ responseGroup.questionId }}</td>
+        <td>{{ responseGroup.predictionIds?.join(', ') }}</td>
+        <td>
+          <button *ngIf="responseGroup.id !== undefined" type="button" class="btn btn-primary" (click)="view(responseGroup.id)">
+            <i class="fa fa-eye"></i> View
+          </button>
+          <button *ngIf="responseGroup.id !== undefined" type="button" class="btn btn-warning" (click)="edit(responseGroup.id)">
+            <i class="fa fa-pencil"></i> Edit
+          </button>
+          <button *ngIf="responseGroup.id !== undefined" type="button" class="btn btn-danger" (click)="delete(responseGroup.id)">
+            <i class="fa fa-trash"></i> Delete
+          </button>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
