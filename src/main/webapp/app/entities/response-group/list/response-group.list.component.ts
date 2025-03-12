@@ -8,7 +8,7 @@ import { ResponseGroupService } from '../service/response-group.service.componen
 
 @Component({
   selector: 'app-response-group-list',
-  templateUrl: './response-group-list.component.html',
+  templateUrl: './response-group.list.component.html',
   standalone: true,
   imports: [TranslateDirective, NgFor, NgIf],
 })

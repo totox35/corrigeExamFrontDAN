@@ -4,7 +4,6 @@ import { Component } from '@angular/core';
   selector: 'jhi-delete',
   standalone: true,
   imports: [],
-  templateUrl: './delete.component.html',
-  styleUrl: './delete.component.scss',
+  templateUrl: './response-group-delete-dialog.component.html',
 })
-export class DeleteComponent {}
+export class ResponseGroupDeleteComponent {}

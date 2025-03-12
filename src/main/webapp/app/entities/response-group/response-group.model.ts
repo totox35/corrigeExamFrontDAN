@@ -1,6 +1,3 @@
-import { group } from 'console';
-import { response } from 'express';
-
 export interface IResponseGroupe {
   id?: number;
   questionId?: number;

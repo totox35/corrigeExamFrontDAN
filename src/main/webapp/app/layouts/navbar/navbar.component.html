@@ -253,6 +253,18 @@
                 <span jhiTranslate="global.menu.entities.prediction">Prédiction</span>
               </a>
             </li>
+            <li>
+              <a
+                class="dropdown-item"
+                [routerLink]="['/response-group', { outlets: { navbar: null } }]"
+                routerLinkActive="active"
+                [routerLinkActiveOptions]="{ exact: true }"
+                (click)="collapseNavbar()"
+              >
+                <fa-icon icon="asterisk" [fixedWidth]="true"></fa-icon>
+                <span jhiTranslate="global.menu.entities.responseGroup">Response Group</span>
+              </a>
+            </li>
             <!-- jhipster-needle-add-entity-to-menu - JHipster will add entities to the menu here -->
           </ul>
         </li>

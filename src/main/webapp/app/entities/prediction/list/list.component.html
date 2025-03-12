@@ -24,8 +24,6 @@
       <tr>
         <th jhiTranslate="global.menu.entities.list.id">ID</th>
         <th jhiTranslate="global.menu.entities.list.questionid">Id de Question</th>
-        <th jhiTranslate="global.menu.entities.list.studentnumber">Numero de page</th>
-        <th jhiTranslate="global.menu.entities.list.questionnumber">Numero de Question</th>
         <th jhiTranslate="global.menu.entities.list.predictiontext">Prediction Text</th>
         <th jhiTranslate="global.menu.entities.list.actions">Actions</th>
       </tr>
@@ -34,8 +32,6 @@
       <tr *ngFor="let prediction of predictions">
         <td>{{ prediction.id }}</td>
         <td>{{ prediction.questionId }}</td>
-        <td>{{ prediction.sheetId }}</td>
-        <td>{{ prediction.questionNumber }}</td>
         <td>{{ prediction.text }}</td>
         <td>
           <button *ngIf="prediction.id !== undefined" type="button" class="btn btn-primary" (click)="view(prediction.id)">
