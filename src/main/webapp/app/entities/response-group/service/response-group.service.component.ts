@@ -53,6 +53,14 @@ export class ResponseGroupService {
     return this.http.delete(`${this.resourceUrl}/question/${questionId}`, { observe: 'response' });
   }
 
+  findByQuestionId(questionId: number): Observable<EntityResponseType> {
+    return this.http.get(`${this.resourceUrl}/question/${questionId}`, { observe: 'response' });
+  }
+
+  findByPredictionId(predictionId: number): Observable<EntityResponseType> {
+    return this.http.get(`${this.resourceUrl}/prediction/${predictionId}`, { observe: 'response' });
+  }
+
   //To redo properly with our methods
   calculateSimilarity(groupEmbedding: number[], predictionEmbedding: number[]): number {
     if (!groupEmbedding || !predictionEmbedding || groupEmbedding.length === 0 || predictionEmbedding.length === 0) {
