@@ -1,10 +1,11 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpResponse } from '@angular/common/http';
-import { Observable } from 'rxjs';
-import { IResponseGroup } from 'app/entities/response-group/response-group.model';
+import { firstValueFrom, Observable } from 'rxjs';
+import { IResponseGroup, ResponseGroup } from 'app/entities/response-group/response-group.model';
 import { createRequestOption } from 'app/core/request/request-util';
 import { ApplicationConfigService } from 'app/core/config/application-config.service';
 import { getResponseGroupIdentifier } from 'app/entities/response-group/response-group.model';
+import { PredictionService } from 'app/entities/prediction/service/prediction.service';
 
 export type EntityResponseType = HttpResponse<IResponseGroup>;
 export type EntityArrayResponseType = HttpResponse<IResponseGroup[]>;
@@ -16,6 +17,7 @@ export class ResponseGroupService {
   constructor(
     protected http: HttpClient,
     protected applicationConfigService: ApplicationConfigService,
+    public predictionService: PredictionService,
   ) {
     this.resourceUrl = this.applicationConfigService.getEndpointFor('api/responseGroups');
   }
@@ -85,7 +87,7 @@ export class ResponseGroupService {
     return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
   }
 
-  //To redo properly wth the methods we wish
+  //To redo properly with the methods we wish
   updateAverageEmbedding(responseGroup: IResponseGroup, predictionEmbedding: number[]): void {
     if (!predictionEmbedding || predictionEmbedding.length === 0) {
       return;
@@ -102,5 +104,46 @@ export class ResponseGroupService {
     }
 
     responseGroup.averageEmbedding = newAverage;
+  }
+
+  async calculatePredictionEmbedding(predictionId: number): Promise<number[]> {
+    const predictionText = (await firstValueFrom(this.predictionService.find(predictionId))).body?.text;
+
+    //Calculate the embedding
+
+    //Example to make function work
+    const predictionEmbedding = [1, 2, 3];
+    return predictionEmbedding;
+  }
+
+  //This will be the function that uses other service functions to put prediction in a response group
+  async assignPredictionToResponseGroup(predictionId: number, questionId: number) {
+    const responseGroup = await firstValueFrom(this.findByPredictionId(predictionId));
+    if (responseGroup) {
+      //To redo properly
+      return;
+    } else {
+      let responseGroups = (await firstValueFrom(this.findByQuestionId(questionId))).body;
+      const predictionEmbedding = this.calculatePredictionEmbedding(predictionId);
+      let maxSimilarity = 0;
+      let bestResponseGroup = null;
+      for (const responseGroup of responseGroups!) {
+        let similarity = this.calculateSimilarity(responseGroup.averageEmbedding!, await predictionEmbedding);
+        // 0.5 to be changed
+        if (maxSimilarity < similarity && similarity > 0.5) {
+          maxSimilarity = similarity;
+          bestResponseGroup = responseGroup;
+        }
+      }
+      if (bestResponseGroup) {
+        bestResponseGroup?.predictionIds?.push(predictionId);
+        this.updateAverageEmbedding(bestResponseGroup, await predictionEmbedding);
+        this.update(bestResponseGroup);
+      } else {
+        const newResponseGroup = new ResponseGroup(undefined, questionId, [predictionId], await predictionEmbedding);
+        this.create(newResponseGroup);
+        this.create(newResponseGroup);
+      }
+    }
   }
 }
