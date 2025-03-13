@@ -142,7 +142,6 @@ export class ResponseGroupService {
       } else {
         const newResponseGroup = new ResponseGroup(undefined, questionId, [predictionId], await predictionEmbedding);
         this.create(newResponseGroup);
-        this.create(newResponseGroup);
       }
     }
   }
