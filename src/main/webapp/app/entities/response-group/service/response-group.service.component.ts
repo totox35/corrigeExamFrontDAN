@@ -63,7 +63,7 @@ export class ResponseGroupService {
     return this.http.get(`${this.resourceUrl}/prediction/${predictionId}`, { observe: 'response' });
   }
 
-  //To redo properly with our methods
+  //To redo properly with our methods done by claude
   calculateSimilarity(groupEmbedding: number[], predictionEmbedding: number[]): number {
     if (!groupEmbedding || !predictionEmbedding || groupEmbedding.length === 0 || predictionEmbedding.length === 0) {
       return 0;
@@ -87,7 +87,7 @@ export class ResponseGroupService {
     return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
   }
 
-  //To redo properly with the methods we wish
+  //To redo properly with the methods we wish done by claude
   updateAverageEmbedding(responseGroup: IResponseGroup, predictionEmbedding: number[]): void {
     if (!predictionEmbedding || predictionEmbedding.length === 0) {
       return;
@@ -106,14 +106,72 @@ export class ResponseGroupService {
     responseGroup.averageEmbedding = newAverage;
   }
 
+  //To redo properly with the methods we wish done by claude
   async calculatePredictionEmbedding(predictionId: number): Promise<number[]> {
-    const predictionText = (await firstValueFrom(this.predictionService.find(predictionId))).body?.text;
+    try {
+      const predictionResponse = await firstValueFrom(this.predictionService.find(predictionId));
+      const predictionText = predictionResponse.body?.text;
 
-    //Calculate the embedding
+      if (!predictionText) {
+        console.error(`No text found for prediction with ID: ${predictionId}`);
+        return [];
+      }
 
-    //Example to make function work
-    const predictionEmbedding = [1, 2, 3];
-    return predictionEmbedding;
+      // Implement a simple TF-IDF-like embedding approach
+      // This is a simplified version that creates a basic vector representation
+      return this.generateSimpleEmbedding(predictionText);
+    } catch (error) {
+      console.error('Error calculating prediction embedding:', error);
+      return [];
+    }
+  }
+
+  // Helper method to generate a simple embedding // To redo done by claude
+  private generateSimpleEmbedding(text: string, dimensions: number = 50): number[] {
+    // Normalize text: lowercase and remove punctuation
+    const normalizedText = text.toLowerCase().replace(/[^\w\s]/g, '');
+
+    // Tokenize: split into words
+    const tokens = normalizedText.split(/\s+/).filter(word => word.length > 0);
+
+    if (tokens.length === 0) {
+      return new Array(dimensions).fill(0);
+    }
+
+    // Create a deterministic hash function for words
+    const hashWord = (word: string): number => {
+      let hash = 0;
+      for (let i = 0; i < word.length; i++) {
+        const char = word.charCodeAt(i);
+        hash = (hash << 5) - hash + char;
+        hash = hash & hash; // Convert to 32-bit integer
+      }
+      return hash;
+    };
+
+    // Initialize the embedding vector with zeros
+    const embedding = new Array(dimensions).fill(0);
+
+    // For each token, update the embedding vector
+    for (const token of tokens) {
+      const hash = Math.abs(hashWord(token));
+
+      // Use the hash to deterministically affect multiple dimensions
+      for (let i = 0; i < Math.min(10, token.length); i++) {
+        const position = (hash + i * 31) % dimensions;
+        const charCode = token.charCodeAt(i % token.length);
+        embedding[position] += charCode / 255;
+      }
+    }
+
+    // Normalize the embedding to have unit length (cosine similarity-friendly)
+    const magnitude = Math.sqrt(embedding.reduce((sum, val) => sum + val * val, 0));
+
+    if (magnitude === 0) {
+      return embedding; // Return zeros if magnitude is zero
+    }
+
+    return embedding.map(val => val / magnitude);
   }
 
   //This will be the function that uses other service functions to put prediction in a response group
