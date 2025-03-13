@@ -177,8 +177,9 @@ export class ResponseGroupService {
   //This will be the function that uses other service functions to put prediction in a response group
   async assignPredictionToResponseGroup(predictionId: number, questionId: number) {
     const responseGroup = await firstValueFrom(this.findByPredictionId(predictionId));
-    if (responseGroup) {
+    if (responseGroup.body?.id != undefined) {
       //To redo properly
+      console.log('There was already a group', responseGroup.body?.predictionIds);
       return;
     } else {
       let responseGroups = (await firstValueFrom(this.findByQuestionId(questionId))).body;
@@ -196,10 +197,16 @@ export class ResponseGroupService {
       if (bestResponseGroup) {
         bestResponseGroup?.predictionIds?.push(predictionId);
         this.updateAverageEmbedding(bestResponseGroup, await predictionEmbedding);
-        this.update(bestResponseGroup);
+        let returnObject = (await firstValueFrom(this.update(bestResponseGroup))).body;
+        console.log('I updated the group', returnObject);
       } else {
-        const newResponseGroup = new ResponseGroup(undefined, questionId, [predictionId], await predictionEmbedding);
-        this.create(newResponseGroup);
+        const newResponseGroup: IResponseGroup = {
+          questionId: questionId,
+          predictionIds: [predictionId],
+          averageEmbedding: await predictionEmbedding,
+        };
+        let returnObject = (await firstValueFrom(this.create(newResponseGroup))).body;
+        console.log('I created the group', returnObject);
       }
     }
   }

@@ -109,6 +109,7 @@ import { CheckboxModule } from 'primeng/checkbox';
 import { ZoneService } from 'app/entities/zone/service/zone.service';
 import { PredictionStudentResponseService } from '../mlt/prediction-studentresponse-service';
 import Fuse from 'fuse.js';
+import { ResponseGroupService } from 'app/entities/response-group/service/response-group.service.component';
 
 enum ScalePolicy {
   FitWidth = 1,
@@ -346,6 +347,7 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
     private focusViewService: FocusViewService,
     private http: HttpClient,
     private predictionStudentResponseService: PredictionStudentResponseService,
+    private responsegroupService: ResponseGroupService,
   ) {
     effect(() => {
       this.testdisableAndEnableKeyBoardShortCutSignal = this.testdisableAndEnableKeyBoardShortCut();

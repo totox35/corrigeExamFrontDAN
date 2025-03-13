@@ -11,6 +11,7 @@ import { PredictionService } from 'app/entities/prediction/service/prediction.se
 import { CoupageDimageService } from './coupage-dimage.service';
 import { MLTService } from './mlt.service';
 import { IPrediction } from 'app/entities/prediction/prediction.model';
+import { ResponseGroupService } from 'app/entities/response-group/service/response-group.service.component';
 
 interface ExamPageImage {
   imageData: ImageData;
@@ -36,6 +37,7 @@ export class PredictionStudentResponseService {
     private predictionService: PredictionService,
     private coupageDimageService: CoupageDimageService,
     private mlt: MLTService,
+    private responseGroupService: ResponseGroupService,
   ) {}
 
   predictStudentResponsesFromQuestionIds(examId: number, questionId: number): Subject<number[]> {
@@ -132,7 +134,10 @@ export class PredictionStudentResponseService {
           questionNumber: image.questionNumero,
         };
 
-        await firstValueFrom(this.predictionService.create(predictionData));
+        const newPrediction = (await firstValueFrom(this.predictionService.create(predictionData))).body;
+        this.responseGroupService.assignPredictionToResponseGroup(newPrediction?.id!, newPrediction?.questionId!);
+        let responseGroups = this.responseGroupService.findByQuestionId(newPrediction?.id!);
+        console.log('Groups:', responseGroups);
         image.prediction = prediction.trim();
       } else {
         image.prediction = 'No prediction available';
