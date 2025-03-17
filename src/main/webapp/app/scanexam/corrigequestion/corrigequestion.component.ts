@@ -3374,7 +3374,7 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
     // Find the first matching prediction
     this.currentPrediction = this.allpredictions.find(pred => pred.sheetId === this.sheet?.id) || undefined;
     if (this.currentPrediction) {
-      this.predictionsFusing = this.findSimilarPredictions(this.currentPrediction, this.allpredictions);
+      this.predictionsFusing = await this.findSimilarPredictions(this.currentPrediction);
       const predsheetids = this.predictionsFusing.map(prediction => prediction.sheetId!);
       if (predsheetids.length > 0) {
         const s = await firstValueFrom(
@@ -3394,32 +3394,14 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
     this.dropdownOpen = false;
   }
 
-  /* Permet de trouver les réponses simulaires à partir d'un algo de fuzzing */
-  findSimilarPredictions(currentPrediction: Prediction, predictions: Prediction[]): Prediction[] {
-    // Fuse.js options
-    const fuseOptions = {
-      keys: ['text'],
-      threshold: 0.5, // Adjust for leniency
-      distance: 300, // High value for inaccuracies
-      minMatchCharLength: 3,
-    };
-
-    const fuse = new Fuse(predictions, fuseOptions);
-
-    // Forward search: Check which predictions are similar to the current prediction
-    const forwardResults = fuse.search(currentPrediction.text!);
-
-    // Reverse search: Check if the current prediction is similar to any prediction text
-    const reverseResults = predictions.filter(prediction => {
-      const fuseForReverse = new Fuse([currentPrediction], fuseOptions);
-      const result = fuseForReverse.search(prediction.text!);
-      return result.length > 0;
-    });
-
-    // Combine forward and reverse results, ensuring no duplicates
-    const similarPredictions = new Set([...forwardResults.map(result => result.item), ...reverseResults]);
-
-    // Exclude the current prediction itself
+  /* Permet d'acceder les response groups'*/
+  async findSimilarPredictions(currentPrediction: Prediction): Promise<Prediction[]> {
+    const similarPredictionIds = (await firstValueFrom(this.responsegroupService.findByPredictionId(currentPrediction.id!))).body
+      ?.predictionIds;
+    const similarPredictions: IPrediction[] = [];
+    for (const id of similarPredictionIds!) {
+      similarPredictions.push((await firstValueFrom(this.predictionService.find(id))).body!);
+    }
     return [...similarPredictions].filter(prediction => prediction.id !== currentPrediction.id);
   }
 
@@ -3510,12 +3492,12 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
     let predictionsF = this.predictionsFusing;
     if (this.filterPredictionsWithNotes) {
       predictionsF = this.predictionsFusingWithoutStudentResponse;
-    } else if (this.filterallexamsheets && !this.filterPredictionsWithNotes) {
-      predictionsF = this.allpredictions;
+    } else if (!this.searchedTerm && !this.filterPredictionsWithNotes) {
+      predictionsF = this.predictionsFusing;
     } else {
-      predictionsF = this.allpredictionsgWithoutStudentResponse;
+      predictionsF = this.allpredictions;
     }
-    if (this.searchedTerm && this.searchedTerm.length > 2) {
+    if (this.searchedTerm && this.searchedTerm.length > 0) {
       const p = predictionsF.filter(prediction => (prediction.text ?? '').toLowerCase().includes(this.searchedTerm.toLowerCase()));
       if (p.length <= 30) {
         this.toomuchsimilar = false;
