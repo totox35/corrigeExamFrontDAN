@@ -1,11 +1,12 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpResponse } from '@angular/common/http';
 import { firstValueFrom, Observable } from 'rxjs';
-import { IResponseGroup, ResponseGroup } from 'app/entities/response-group/response-group.model';
+import { IResponseGroup } from 'app/entities/response-group/response-group.model';
 import { createRequestOption } from 'app/core/request/request-util';
 import { ApplicationConfigService } from 'app/core/config/application-config.service';
 import { getResponseGroupIdentifier } from 'app/entities/response-group/response-group.model';
 import { PredictionService } from 'app/entities/prediction/service/prediction.service';
+import { EmbeddingService } from 'app/scanexam/embedding/embedding.service';
 
 export type EntityResponseType = HttpResponse<IResponseGroup>;
 export type EntityArrayResponseType = HttpResponse<IResponseGroup[]>;
@@ -18,6 +19,7 @@ export class ResponseGroupService {
     protected http: HttpClient,
     protected applicationConfigService: ApplicationConfigService,
     public predictionService: PredictionService,
+    private embeddingService: EmbeddingService,
   ) {
     this.resourceUrl = this.applicationConfigService.getEndpointFor('api/responseGroups');
   }
@@ -60,54 +62,106 @@ export class ResponseGroupService {
   }
 
   findByPredictionId(predictionId: number): Observable<EntityResponseType> {
-    return this.http.get(`${this.resourceUrl}/prediction/${predictionId}`, { observe: 'response' });
+    return this.http.get<IResponseGroup>(`${this.resourceUrl}/prediction/${predictionId}`, { observe: 'response' });
   }
 
-  //To redo properly with our methods done by claude
-  calculateSimilarity(groupEmbedding: number[], predictionEmbedding: number[]): number {
+  async assignPredictionToResponseGroup(predictionId: number, questionId: number): Promise<void> {
+    const responseGroupResponse = await firstValueFrom(this.findByPredictionId(predictionId));
+    if (responseGroupResponse.body?.id !== undefined) {
+      // eslint-disable-next-line no-console
+      console.log('There was already a group', responseGroupResponse.body?.predictionIds);
+      return;
+    } else {
+      const responseGroupsResponse = await firstValueFrom(this.findByQuestionId(questionId));
+      const predictionEmbedding = await this.calculatePredictionEmbedding(predictionId);
+      let maxSimilarity = 0;
+      let bestResponseGroup: IResponseGroup | null = null;
+      for (const responseGroup of responseGroupsResponse.body!) {
+        const similarity = this.calculateSimilarity(responseGroup.averageEmbedding!, predictionEmbedding);
+        if (maxSimilarity < similarity && similarity > 0.5) {
+          maxSimilarity = similarity;
+          bestResponseGroup = responseGroup;
+        }
+      }
+      if (bestResponseGroup) {
+        bestResponseGroup.predictionIds?.push(predictionId);
+        this.updateAverageEmbedding(bestResponseGroup, predictionEmbedding);
+        await firstValueFrom(this.update(bestResponseGroup));
+        // eslint-disable-next-line no-console
+        console.log('I updated the group', bestResponseGroup);
+      } else {
+        const newResponseGroup: IResponseGroup = {
+          questionId,
+          predictionIds: [predictionId],
+          averageEmbedding: predictionEmbedding,
+        };
+        const returnObject = await firstValueFrom(this.create(newResponseGroup));
+        // eslint-disable-next-line no-console
+        console.log('I created the group', returnObject.body);
+      }
+    }
+  }
+
+  private calculateSimilarity(groupEmbedding: number[], predictionEmbedding: number[]): number {
     if (!groupEmbedding || !predictionEmbedding || groupEmbedding.length === 0 || predictionEmbedding.length === 0) {
       return 0;
     }
+
+    // Checking if the arrys have the same length
+    if (groupEmbedding.length !== predictionEmbedding.length) {
+      throw new Error('Embeddings must be of the same length');
+    }
+
     let dotProduct = 0;
     let normA = 0;
     let normB = 0;
 
-    const dimension = Math.min(groupEmbedding.length, predictionEmbedding.length);
-
-    for (let i = 0; i < dimension; i++) {
+    for (let i = 0; i < groupEmbedding.length; i++) {
       dotProduct += groupEmbedding[i] * predictionEmbedding[i];
       normA += Math.pow(groupEmbedding[i], 2);
       normB += Math.pow(predictionEmbedding[i], 2);
     }
 
-    if (normA === 0 || normB === 0) {
+    if (normA === 0 || normB === 0 || dotProduct === 0) {
       return 0;
     }
 
     return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
   }
 
-  //To redo properly with the methods we wish done by claude
-  updateAverageEmbedding(responseGroup: IResponseGroup, predictionEmbedding: number[]): void {
+  private updateAverageEmbedding(responseGroup: IResponseGroup, predictionEmbedding: number[]): void {
     if (!predictionEmbedding || predictionEmbedding.length === 0) {
       return;
     }
+
+    // Initialization
     if (!responseGroup.averageEmbedding || responseGroup.averageEmbedding.length === 0) {
       responseGroup.averageEmbedding = [...predictionEmbedding];
       return;
     }
-    const dimension = Math.min(responseGroup.averageEmbedding.length, predictionEmbedding.length);
+
+    // Checking if the arrys have the same length
+    if (responseGroup.averageEmbedding.length !== predictionEmbedding.length) {
+      throw new Error('Embeddings must be of the same length');
+    }
+
+    const dimension = responseGroup.averageEmbedding.length;
+    let count = responseGroup.predictionIds?.length;
+    if (!count) {
+      count = 1;
+    }
     const newAverage: number[] = [];
+
+    // Calculate weighted average
     for (let i = 0; i < dimension; i++) {
-      const avgValue = (responseGroup.averageEmbedding[i] + predictionEmbedding[i]) / 2;
+      const avgValue = (responseGroup.averageEmbedding[i] * count + predictionEmbedding[i]) / (count + 1);
       newAverage.push(avgValue);
     }
 
     responseGroup.averageEmbedding = newAverage;
   }
 
-  //To redo properly with the methods we wish done by claude
-  async calculatePredictionEmbedding(predictionId: number): Promise<number[]> {
+  private async calculatePredictionEmbedding(predictionId: number): Promise<number[]> {
     try {
       const predictionResponse = await firstValueFrom(this.predictionService.find(predictionId));
       const predictionText = predictionResponse.body?.text;
@@ -117,97 +171,14 @@ export class ResponseGroupService {
         return [];
       }
 
-      // Implement a simple TF-IDF-like embedding approach
-      // This is a simplified version that creates a basic vector representation
-      return this.generateSimpleEmbedding(predictionText);
+      const embedding = await this.embeddingService.executeEmbeddingFromText(predictionText);
+      if (embedding) {
+        return Array.from(embedding); // Convert Float32Array to regular array
+      }
+      return [];
     } catch (error) {
       console.error('Error calculating prediction embedding:', error);
       return [];
-    }
-  }
-
-  // Helper method to generate a simple embedding // To redo done by claude
-  private generateSimpleEmbedding(text: string, dimensions: number = 50): number[] {
-    // Normalize text: lowercase and remove punctuation
-    const normalizedText = text.toLowerCase().replace(/[^\w\s]/g, '');
-
-    // Tokenize: split into words
-    const tokens = normalizedText.split(/\s+/).filter(word => word.length > 0);
-
-    if (tokens.length === 0) {
-      return new Array(dimensions).fill(0);
-    }
-
-    // Create a deterministic hash function for words
-    const hashWord = (word: string): number => {
-      let hash = 0;
-      for (let i = 0; i < word.length; i++) {
-        const char = word.charCodeAt(i);
-        hash = (hash << 5) - hash + char;
-        hash = hash & hash; // Convert to 32-bit integer
-      }
-      return hash;
-    };
-
-    // Initialize the embedding vector with zeros
-    const embedding = new Array(dimensions).fill(0);
-
-    // For each token, update the embedding vector
-    for (const token of tokens) {
-      const hash = Math.abs(hashWord(token));
-
-      // Use the hash to deterministically affect multiple dimensions
-      for (let i = 0; i < Math.min(10, token.length); i++) {
-        const position = (hash + i * 31) % dimensions;
-        const charCode = token.charCodeAt(i % token.length);
-        embedding[position] += charCode / 255;
-      }
-    }
-
-    // Normalize the embedding to have unit length (cosine similarity-friendly)
-    const magnitude = Math.sqrt(embedding.reduce((sum, val) => sum + val * val, 0));
-
-    if (magnitude === 0) {
-      return embedding; // Return zeros if magnitude is zero
-    }
-
-    return embedding.map(val => val / magnitude);
-  }
-
-  //This will be the function that uses other service functions to put prediction in a response group
-  async assignPredictionToResponseGroup(predictionId: number, questionId: number) {
-    const responseGroup = await firstValueFrom(this.findByPredictionId(predictionId));
-    if (responseGroup.body?.id != undefined) {
-      //To redo properly
-      console.log('There was already a group', responseGroup.body?.predictionIds);
-      return;
-    } else {
-      let responseGroups = (await firstValueFrom(this.findByQuestionId(questionId))).body;
-      const predictionEmbedding = this.calculatePredictionEmbedding(predictionId);
-      let maxSimilarity = 0;
-      let bestResponseGroup = null;
-      for (const responseGroup of responseGroups!) {
-        let similarity = this.calculateSimilarity(responseGroup.averageEmbedding!, await predictionEmbedding);
-        // 0.5 to be changed
-        if (maxSimilarity < similarity && similarity > 0.5) {
-          maxSimilarity = similarity;
-          bestResponseGroup = responseGroup;
-        }
-      }
-      if (bestResponseGroup) {
-        bestResponseGroup?.predictionIds?.push(predictionId);
-        this.updateAverageEmbedding(bestResponseGroup, await predictionEmbedding);
-        let returnObject = (await firstValueFrom(this.update(bestResponseGroup))).body;
-        console.log('I updated the group', returnObject);
-      } else {
-        const newResponseGroup: IResponseGroup = {
-          questionId: questionId,
-          predictionIds: [predictionId],
-          averageEmbedding: await predictionEmbedding,
-        };
-        let returnObject = (await firstValueFrom(this.create(newResponseGroup))).body;
-        console.log('I created the group', returnObject);
-      }
     }
   }
 }

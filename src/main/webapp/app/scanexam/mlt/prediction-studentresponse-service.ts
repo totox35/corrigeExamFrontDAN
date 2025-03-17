@@ -135,9 +135,12 @@ export class PredictionStudentResponseService {
         };
 
         const newPrediction = (await firstValueFrom(this.predictionService.create(predictionData))).body;
-        this.responseGroupService.assignPredictionToResponseGroup(newPrediction?.id!, newPrediction?.questionId!);
-        let responseGroups = this.responseGroupService.findByQuestionId(newPrediction?.id!);
-        console.log('Groups:', responseGroups);
+        if (newPrediction?.id && newPrediction?.questionId) {
+          this.responseGroupService.assignPredictionToResponseGroup(newPrediction.id, newPrediction.questionId);
+          const responseGroups = this.responseGroupService.findByQuestionId(newPrediction.id);
+          // eslint-disable-next-line no-console
+          console.log('Groups:', responseGroups);
+        }
         image.prediction = prediction.trim();
       } else {
         image.prediction = 'No prediction available';
