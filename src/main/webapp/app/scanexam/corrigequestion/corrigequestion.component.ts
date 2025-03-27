@@ -3475,7 +3475,8 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
   }
 
   async initSimilarPrediction() {
-    if (this.currentPrediction == undefined) {
+    const nbStudents = this.numberPagesInScan! / this.nbreFeuilleParCopie!;
+    if (this.allpredictions.length != nbStudents) {
       // Show popup/alert
       this.confirmationService.confirm({
         message: this.translateService.instant('scanexam.noPredictionDoAnalyseOCR'),
