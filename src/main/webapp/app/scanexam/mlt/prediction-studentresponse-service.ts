@@ -48,65 +48,103 @@ export class PredictionStudentResponseService {
     return subject;
   }
 
+  private abortController: AbortController | null = null;
+
   private async _predictStudentResponsesFromQuestionIds(examId: number, questionId: number, subject: Subject<number[]>): Promise<void> {
-    const _srs = await firstValueFrom(this.examSheetService.query({ examId }));
-    const srs: IExamSheet[] = _srs.body || [];
-    const _q = await firstValueFrom(this.questionService.find(questionId));
-    // Query predictions for this question
-    const _predictionResponse = await firstValueFrom(this.predictionService.query({ questionId }));
-    const predictionResponse = _predictionResponse.body || [];
-    const predictionResponseId = predictionResponse.map(e => e.id);
+    this.abortController = new AbortController();
+    const signal = this.abortController.signal;
 
-    const q = _q.body || undefined;
+    try {
+      const _srs = await firstValueFrom(this.examSheetService.query({ examId }));
+      const srs: IExamSheet[] = _srs.body || [];
+      const _q = await firstValueFrom(this.questionService.find(questionId));
+      const _predictionResponse = await firstValueFrom(this.predictionService.query({ questionId }));
+      const predictionResponse = _predictionResponse.body || [];
+      const predictionResponseId = predictionResponse.map(e => e.id);
 
-    if (q !== undefined) {
-      const _qs = await firstValueFrom(this.questionService.query({ numero: q.numero, examId }));
-      const qs = _qs.body || undefined;
-      const srsfilter = srs.filter(sr => !predictionResponseId.includes(sr.id));
-      const max = srsfilter.length * qs!.length;
-      let currenthandling = 0;
-      for (const sr of srsfilter) {
-        for (const q1 of qs!) {
-          currenthandling = currenthandling + 1;
-          const pageForStudent = sr.pagemin! + q1.zoneDTO!.pageNumber!;
-          const imageToCrop = {
-            examId,
-            factor: 1,
-            align: true,
-            template: false,
-            indexDb: this.preferenceService.getPreference().cacheDb !== 'sqlite',
-            page: pageForStudent,
-            z: q1.zoneDTO!,
-          };
+      const q = _q.body || undefined;
+      if (q !== undefined) {
+        const _qs = await firstValueFrom(this.questionService.query({ numero: q.numero, examId }));
+        const qs = _qs.body || undefined;
+        const srsfilter = srs.filter(sr => !predictionResponseId.includes(sr.id));
+        const max = srsfilter.length * qs!.length;
+        let currenthandling = 0;
 
-          try {
-            const crop = await firstValueFrom(this.alignImagesService.imageCropFromZone(imageToCrop));
-            const imageData = new ImageData(new Uint8ClampedArray(crop.image), crop.width, crop.height);
-            // Add image to list
-            const newImage: ExamPageImage = {
-              imageData,
-              width: crop.width,
-              height: crop.height,
-              questionId: q1.id,
-              sheetId: sr.id!,
-              questionNumero: q1.numero!,
+        for (const sr of srsfilter) {
+          if (signal.aborted) return;
+
+          for (const q1 of qs!) {
+            currenthandling = currenthandling + 1;
+            const pageForStudent = sr.pagemin! + q1.zoneDTO!.pageNumber!;
+            const imageToCrop = {
+              examId,
+              factor: 1,
+              align: true,
+              template: false,
+              indexDb: this.preferenceService.getPreference().cacheDb !== 'sqlite',
+              page: pageForStudent,
+              z: q1.zoneDTO!,
             };
-            await this.handlePrediction(newImage);
-            subject.next([currenthandling, max]);
-          } catch (error: any) {
-            console.error('Error cropping image:', error);
+
+            try {
+              const crop = await firstValueFrom(this.alignImagesService.imageCropFromZone(imageToCrop));
+              const imageData = new ImageData(new Uint8ClampedArray(crop.image), crop.width, crop.height);
+              // Add image to list
+              const newImage: ExamPageImage = {
+                imageData,
+                width: crop.width,
+                height: crop.height,
+                questionId: q1.id,
+                sheetId: sr.id!,
+                questionNumero: q1.numero!,
+              };
+
+              const predictionResponse = await firstValueFrom(this.predictionService.query({ questionId: q1.id }));
+              const allpredictions = predictionResponse.body || [];
+              let pass = false;
+              for (const p of allpredictions) {
+                if (p.sheetId == sr.id!) {
+                  pass = true;
+                  break;
+                }
+              }
+
+              if (!pass) {
+                await this.handlePrediction(newImage);
+              }
+
+              subject.next([currenthandling, max]);
+            } catch (error: any) {
+              console.error('Error cropping image:', error);
+            }
           }
         }
       }
+    } catch (error) {
+      console.error('Error in prediction process:', error);
+      if (!signal.aborted) {
+        throw error;
+      }
+    } finally {
+      // Clear the abort controller when done
+      this.abortController = null;
     }
+
     return;
+  }
+
+  // Add this method to stop the prediction process
+  public stopPrediction(): void {
+    if (this.abortController) {
+      this.abortController.abort();
+    }
   }
 
   private async handlePrediction(image: ExamPageImage): Promise<void> {
     try {
       // First use CoupageDimageService
       const coupageResponse = await firstValueFrom(this.coupageDimageService.runScript(image.imageData));
-      let prediction = '';
+      let prediction = ' ';
 
       // Process each refined line
       if (coupageResponse.linesbase64) {
@@ -135,11 +173,10 @@ export class PredictionStudentResponseService {
         };
 
         const newPrediction = (await firstValueFrom(this.predictionService.create(predictionData))).body;
+        console.log('Prediction:', newPrediction);
         if (newPrediction?.id && newPrediction?.questionId) {
           this.responseGroupService.assignPredictionToResponseGroup(newPrediction.id, newPrediction.questionId);
           const responseGroups = this.responseGroupService.findByQuestionId(newPrediction.id);
-          // eslint-disable-next-line no-console
-          console.log('Groups:', responseGroups);
         }
         image.prediction = prediction.trim();
       } else {

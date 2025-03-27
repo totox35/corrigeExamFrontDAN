@@ -555,6 +555,7 @@
     "similarResults": "Similar results",
     "nosimilarResults": "No similar result",
     "displaySimilarAnswers": "Display similar answers",
+    "noPredictionDoAnalyseOCR": "Please finish OCR analyse first to see the similar results",
     "noGradeAvailable": "⚠️ No grade available",
     "applyNoteToSelected": "Apply the note to the selected",
     "applyNoteToSelectedTooltip": "Allows you to apply the grade and comments of the answers being corrected to the answer(s) selected below",
@@ -568,6 +569,7 @@
     "synchrocommentsTooltip": "When the option is selected, if you apply a comment to the correction view, this comment is applied to all the similar answers selected.",
     "filterallexamsheets": "Search by keyword on all copies:",
     "filterallexamsheetsTooltip": "Applies the search to all the predicted words (not only to those that initially appear to be semantically similar)",
-    "toomuchsimilarResults": "Too many similar answers found"
+    "toomuchsimilarResults": "Too many similar answers found",
+    "pausePerformPrediction": "PAUSE"
   }
 }

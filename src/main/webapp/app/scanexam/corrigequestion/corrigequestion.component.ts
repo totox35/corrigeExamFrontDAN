@@ -3241,32 +3241,57 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
       }
     });
   }
-
   async performPrediction4Question(): Promise<void> {
     if (this.currentQuestion?.typeAlgoName === 'manuscrit') {
       this.blocked = true;
       this.showSpinner = true;
       this.showavancement = true;
-      await firstValueFrom(this.predictionService.deleteByQuestionId(this.currentQuestion!.id!));
-      this.predictionStudentResponseService.predictStudentResponsesFromQuestionIds(+this.examId!, this.currentQuestion!.id!).subscribe({
-        next: (res: number[]) => {
-          this.currentCopieocr = res[0];
-          this.nbrecopieocr = res[1];
-        },
-        error: err => {
-          console.error('Error predicting student responses:', err);
-          alert('Failed to predict student responses. Please try again.');
-        },
-        complete: () => {
-          this.blocked = false;
-          this.showSpinner = false;
-          this.currentCopieocr = 0;
-          this.nbrecopieocr = 0;
-          this.showavancement = false;
-          this.dropdownOpen = false;
-          this.loadPrediction();
-        },
-      });
+
+      // Create a subscription variable that we can use to unsubscribe later
+      this.predictionSubscription = this.predictionStudentResponseService
+        .predictStudentResponsesFromQuestionIds(+this.examId!, this.currentQuestion!.id!)
+        .subscribe({
+          next: (res: number[]) => {
+            this.currentCopieocr = res[0];
+            this.nbrecopieocr = res[1];
+          },
+          error: err => {
+            console.error('Error predicting student responses:', err);
+            alert('Failed to predict student responses. Please try again.');
+            this.resetUI();
+          },
+          complete: () => {
+            this.resetUI();
+            this.loadPrediction();
+          },
+        });
+    }
+  }
+
+  private predictionSubscription: Subscription | null = null;
+
+  private resetUI(): void {
+    this.predictionStudentResponseService.stopPrediction();
+
+    this.blocked = false;
+    this.showSpinner = false;
+    this.currentCopieocr = 0;
+    this.nbrecopieocr = 0;
+    this.showavancement = false;
+    this.dropdownOpen = false;
+  }
+
+  pausePerformPrediction() {
+    if (this.predictionSubscription) {
+      this.predictionSubscription.unsubscribe();
+      this.predictionSubscription = null;
+    }
+    this.resetUI();
+  }
+
+  ngOnDestroy() {
+    if (this.predictionSubscription) {
+      this.predictionSubscription.unsubscribe();
     }
   }
 
@@ -3394,15 +3419,20 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
     this.dropdownOpen = false;
   }
 
-  /* Permet d'acceder les response groups'*/
+  // Permet d'acceder les response groups'
   async findSimilarPredictions(currentPrediction: Prediction): Promise<Prediction[]> {
-    const similarPredictionIds = (await firstValueFrom(this.responsegroupService.findByPredictionId(currentPrediction.id!))).body
-      ?.predictionIds;
+    const response = await firstValueFrom(this.responsegroupService.findByPredictionId(currentPrediction.id!));
+    const similarPredictionIds = response.body?.predictionIds || [];
     const similarPredictions: IPrediction[] = [];
-    for (const id of similarPredictionIds!) {
-      similarPredictions.push((await firstValueFrom(this.predictionService.find(id))).body!);
+    for (const id of similarPredictionIds) {
+      const predictionResponse = await firstValueFrom(this.predictionService.find(id));
+      if (predictionResponse.body) {
+        similarPredictions.push(predictionResponse.body);
+      }
     }
-    return [...similarPredictions].filter(prediction => prediction.id !== currentPrediction.id);
+
+    // Filter out the current prediction
+    return similarPredictions.filter(prediction => prediction.id !== currentPrediction.id);
   }
 
   async applySameNoteAndGrade() {

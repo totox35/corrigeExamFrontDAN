@@ -8,6 +8,8 @@
         <p-progressSpinner></p-progressSpinner>
         <BR />
         <div *ngIf="showavancement"><span jhiTranslate="scanexam.sheet">Copie</span> {{ currentCopieocr }} / {{ nbrecopieocr }}</div>
+        <BR />
+        <p-button (click)="pausePerformPrediction()" [label]="'scanexam.pausePerformPrediction' | translate"></p-button>
       </div>
     </div>
   </p-blockUI>
