@@ -3704,7 +3704,9 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
 
   LLMcolor: string = 'blue';
   LLMcolorShow: boolean = false;
+  LLMComment: ITextComment | undefined;
   showLLMGrade(grade: string, comment: ITextComment) {
+    this.LLMComment = comment;
     this.LLMcolorShow = true;
     const old_note = this.currentNote;
     this.currentNote = Number(grade)! / this.noteStep;
