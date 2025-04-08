@@ -3593,4 +3593,131 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
       }
     }
   }
+
+  // Trying to Add LLama
+
+  doLLM() {
+    const question_text = 'Quel est la difference entre les mots clés class et struct?';
+
+    this.responsegroupService
+      .gradeAnswer({
+        question: question_text,
+        student_answer: this.currentPrediction?.text!,
+        max_grade: this.maximumNote,
+        step: this.noteStep,
+      })
+      .subscribe(response => {
+        // if (Array.isArray(response) && response.length > 0 && response[0].generated_text) {
+        // const fullText = response[0].generated_text;
+        // console.log("Full response LLM:", fullText);
+        // const lines = fullText.split('\n');
+        let grade = 'N/A';
+        let comment = 'No comment provided';
+
+        // for (let i = lines.length - 1; i >= 0; i--) {
+        //   const line = lines[i].trim();
+
+        //   if (line.startsWith('Note :') && grade === "N/A") {
+        //     grade = line.replace('Note :', '').trim();
+        //     grade = grade.split('/')[0].trim();
+        //   } else if (line.startsWith('Commentaire :') && comment === "No comment provided") {
+        //     comment = line.replace('Commentaire :', '').trim();
+        //   }
+
+        //   // If we found both, we can stop searching
+        //   if (grade !== "N/A" && comment !== "No comment provided") {
+        //     break;
+        //   }
+        // }
+        grade = '0.75';
+        comment = 'This is my comment';
+
+        console.log('Extracted Grade:', grade);
+        console.log('Extracted Comment:', comment);
+
+        let newComment: ITextComment = {
+          description: comment,
+          text: 'My comment',
+        };
+
+        const returns = this.showLLMGrade(grade, newComment);
+        let old_note = returns[0];
+        let alreadyExists = returns[1];
+
+        this.confirmationService.confirm({
+          message: this.translateService.instant('scanexam.acceptLLM'),
+          accept: () => {
+            if (alreadyExists == undefined) {
+              this.currentTextComment4Question!.pop();
+            }
+            this.acceptLLMGrading(grade, newComment, alreadyExists as ITextComment);
+          },
+          reject: () => {
+            this.currentNote = Number(old_note);
+            if (alreadyExists == undefined) {
+              this.currentTextComment4Question!.pop();
+            }
+            this.LLMcolorShow = false;
+          },
+        });
+
+        // } else {
+        //   console.error("Unexpected response format:", response);
+        // }
+      });
+  }
+
+  async acceptLLMGrading(grade: string, comment: ITextComment, alreadyExists: ITextComment) {
+    this.LLMcolorShow = false;
+    this.resp!.note = Number(grade);
+    this.changeNote();
+
+    if (alreadyExists == undefined) {
+      const t: ITextComment = {
+        questionId: this.currentQuestion!.id,
+        text: comment.text!,
+        description: comment.description!,
+      };
+      this.textCommentService.create(t).subscribe(e => {
+        this.resp?.textcomments?.push(e.body!);
+        const currentComment = e.body!;
+        this.updateResponseRequest(this.resp!).subscribe(resp1 => {
+          this.resp = resp1.body!;
+          (currentComment as any).checked = true;
+          this.currentTextComment4Question?.push(signal(currentComment));
+
+          this.testdisableAndEnableKeyBoardShortCut.set(false);
+          this.populateDefaultShortCut();
+          setTimeout(() => {
+            this.testdisableAndEnableKeyBoardShortCut.set(true);
+          }, 300);
+          this.blocked = false;
+        });
+      });
+    } else {
+      if ((alreadyExists as any).checked == false) {
+        (alreadyExists as any).checked = true;
+        this.fillorcreateQueryPool(this.ajouterTComment, alreadyExists);
+      }
+    }
+  }
+
+  LLMcolor: string = 'blue';
+  LLMcolorShow: boolean = false;
+  showLLMGrade(grade: string, comment: ITextComment) {
+    this.LLMcolorShow = true;
+    const old_note = this.currentNote;
+    this.currentNote = Number(grade)! / this.noteStep;
+    let alreadyExists = undefined;
+    for (const c of this.currentTextComment4Question!) {
+      if (c().description == comment.description && c().text == comment.text) {
+        alreadyExists = c();
+      }
+    }
+    if (alreadyExists == undefined) {
+      this.currentTextComment4Question!.push(signal(comment));
+    }
+
+    return [old_note, alreadyExists];
+  }
 }

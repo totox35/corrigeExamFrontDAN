@@ -181,4 +181,8 @@ export class ResponseGroupService {
       return [];
     }
   }
+
+  gradeAnswer(payload: { question: string; student_answer: string; max_grade: number; step: number }) {
+    return this.http.post<any>('http://localhost:8000/api/grade', payload);
+  }
 }
