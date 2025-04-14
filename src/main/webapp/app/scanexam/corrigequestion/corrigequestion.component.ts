@@ -3651,7 +3651,7 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
         const confirmed = await this.customConfirm(this.translateService.instant('scanexam.acceptLLM'));
 
         if (confirmed) {
-          this.currentTextComment4Question!.pop();
+          this.currentTextComment4Question!.splice(-this.LLMComments.length);
           this.acceptLLMGrading(grade);
         } else {
           this.currentNote = Number(old_note);
@@ -3666,7 +3666,7 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
     this.resp!.note = Number(grade);
     this.changeNote();
     console.log('New comment', this.LLMComments);
-    this.LLMComments!.forEach(comment => {
+    for (let comment of this.LLMComments) {
       const t: ITextComment = {
         questionId: this.currentQuestion!.id,
         text: comment.text!,
@@ -3688,7 +3688,7 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
           this.blocked = false;
         });
       });
-    });
+    }
   }
 
   LLMcolor: string = 'blue';
