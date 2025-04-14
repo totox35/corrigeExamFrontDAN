@@ -110,6 +110,7 @@ import { ZoneService } from 'app/entities/zone/service/zone.service';
 import { PredictionStudentResponseService } from '../mlt/prediction-studentresponse-service';
 import Fuse from 'fuse.js';
 import { ResponseGroupService } from 'app/entities/response-group/service/response-group.service.component';
+import { over } from 'cypress/types/lodash';
 
 enum ScalePolicy {
   FitWidth = 1,
@@ -3596,83 +3597,76 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
 
   // Trying to Add LLama
 
-  doLLM() {
-    const question_text = 'Quel est la difference entre les mots clés class et struct?';
+  async doLLM() {
+    const question_text = 'Comment un humain survivre?';
 
     this.responsegroupService
       .gradeAnswer({
         question: question_text,
-        student_answer: this.currentPrediction?.text!,
+        student_answer: 'Il doivent respirer et boire du leau et manger pour survivre.',
         max_grade: this.maximumNote,
         step: this.noteStep,
       })
-      .subscribe(response => {
-        // if (Array.isArray(response) && response.length > 0 && response[0].generated_text) {
-        // const fullText = response[0].generated_text;
-        // console.log("Full response LLM:", fullText);
-        // const lines = fullText.split('\n');
+      .subscribe(async response => {
+        const fullText = response.response;
+        console.log('LLM response:', fullText);
+        const lines = fullText.split('\n');
         let grade = 'N/A';
-        let comment = 'No comment provided';
+        let comments = [];
 
-        // for (let i = lines.length - 1; i >= 0; i--) {
-        //   const line = lines[i].trim();
+        let currentTitle = '';
+        let currentComment = '';
 
-        //   if (line.startsWith('Note :') && grade === "N/A") {
-        //     grade = line.replace('Note :', '').trim();
-        //     grade = grade.split('/')[0].trim();
-        //   } else if (line.startsWith('Commentaire :') && comment === "No comment provided") {
-        //     comment = line.replace('Commentaire :', '').trim();
-        //   }
+        // Extraire la note et les commentaires
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i].trim();
 
-        //   // If we found both, we can stop searching
-        //   if (grade !== "N/A" && comment !== "No comment provided") {
-        //     break;
-        //   }
-        // }
-        grade = '0.75';
-        comment = 'This is my comment';
+          if (line.startsWith('Note:') || line.startsWith('Note :')) {
+            grade = line.replace(/Note\s*:/, '').trim();
+            grade = grade.split('/')[0].trim();
+          } else if (line.match(/^Titre (du|de) [Cc]ommentaire \d+\s*:/)) {
+            // Si on était déjà en train de traiter un commentaire, on l'ajoute
+            if (currentTitle && currentComment) {
+              comments.push({ title: currentTitle, content: currentComment });
+            }
+
+            // Commencer un nouveau titre
+            currentTitle = line.replace(/^Titre (du|de) [Cc]ommentaire \d+\s*:/, '').trim();
+            currentComment = '';
+          } else if (line.match(/^[Cc]ommentaire \d+\s*:/)) {
+            currentComment = line.replace(/^[Cc]ommentaire \d+\s*:/, '').trim();
+          }
+        }
+
+        // Ajouter le dernier commentaire s'il existe
+        if (currentTitle && currentComment) {
+          comments.push({ title: currentTitle, content: currentComment });
+        }
 
         console.log('Extracted Grade:', grade);
-        console.log('Extracted Comment:', comment);
+        console.log('Extracted Comments:', comments);
 
-        let newComment: ITextComment = {
-          description: comment,
-          text: 'My comment',
-        };
+        const old_note = this.showLLMGrade(grade, comments);
 
-        const returns = this.showLLMGrade(grade, newComment);
-        let old_note = returns[0];
-        let alreadyExists = returns[1];
+        const confirmed = await this.customConfirm(this.translateService.instant('scanexam.acceptLLM'));
 
-        this.confirmationService.confirm({
-          message: this.translateService.instant('scanexam.acceptLLM'),
-          accept: () => {
-            if (alreadyExists == undefined) {
-              this.currentTextComment4Question!.pop();
-            }
-            this.acceptLLMGrading(grade, newComment, alreadyExists as ITextComment);
-          },
-          reject: () => {
-            this.currentNote = Number(old_note);
-            if (alreadyExists == undefined) {
-              this.currentTextComment4Question!.pop();
-            }
-            this.LLMcolorShow = false;
-          },
-        });
-
-        // } else {
-        //   console.error("Unexpected response format:", response);
-        // }
+        if (confirmed) {
+          this.currentTextComment4Question!.pop();
+          this.acceptLLMGrading(grade);
+        } else {
+          this.currentNote = Number(old_note);
+          this.currentTextComment4Question!.pop();
+          this.LLMcolorShow = false;
+        }
       });
   }
 
-  async acceptLLMGrading(grade: string, comment: ITextComment, alreadyExists: ITextComment) {
+  async acceptLLMGrading(grade: string) {
     this.LLMcolorShow = false;
     this.resp!.note = Number(grade);
     this.changeNote();
-
-    if (alreadyExists == undefined) {
+    console.log('New comment', this.LLMComments);
+    this.LLMComments!.forEach(comment => {
       const t: ITextComment = {
         questionId: this.currentQuestion!.id,
         text: comment.text!,
@@ -3694,32 +3688,113 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
           this.blocked = false;
         });
       });
-    } else {
-      if ((alreadyExists as any).checked == false) {
-        (alreadyExists as any).checked = true;
-        this.fillorcreateQueryPool(this.ajouterTComment, alreadyExists);
-      }
-    }
+    });
   }
 
   LLMcolor: string = 'blue';
   LLMcolorShow: boolean = false;
-  LLMComment: ITextComment | undefined;
-  showLLMGrade(grade: string, comment: ITextComment) {
-    this.LLMComment = comment;
+  LLMComments: ITextComment[] = [];
+  showLLMGrade(grade: string, comments: { title: string; content: string }[]) {
     this.LLMcolorShow = true;
     const old_note = this.currentNote;
     this.currentNote = Number(grade)! / this.noteStep;
-    let alreadyExists = undefined;
-    for (const c of this.currentTextComment4Question!) {
-      if (c().description == comment.description && c().text == comment.text) {
-        alreadyExists = c();
-      }
-    }
-    if (alreadyExists == undefined) {
-      this.currentTextComment4Question!.push(signal(comment));
-    }
+    comments.forEach(comment => {
+      let newComment: ITextComment = {
+        description: comment.content,
+        text: comment.title,
+      };
+      this.LLMComments!.push(newComment);
+      this.currentTextComment4Question!.push(signal(newComment));
+    });
+    console.log('New comment', this.LLMComments);
+    return old_note;
+  }
 
-    return [old_note, alreadyExists];
+  customConfirm(message: string): Promise<boolean> {
+    return new Promise(resolve => {
+      // Create overlay
+      const overlay = document.createElement('div');
+      Object.assign(overlay.style, {
+        position: 'fixed',
+        top: '0',
+        left: '0',
+        width: '100%',
+        height: '100%',
+        zIndex: '9999',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+      });
+
+      // Dialog container - now perfectly centered
+      const dialog = document.createElement('div');
+      Object.assign(dialog.style, {
+        backgroundColor: 'white',
+        padding: '24px',
+        border: '2px solid #000',
+        borderRadius: '8px',
+        boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)',
+        maxWidth: '80%',
+        width: '300px', // Fixed width for better centering
+        textAlign: 'center',
+        margin: 'auto', // Ensures centering even if dimensions change
+      });
+
+      // Message element
+      const messageEl = document.createElement('p');
+      Object.assign(messageEl.style, {
+        marginBottom: '20px',
+        fontSize: '16px',
+        wordWrap: 'break-word',
+      });
+      messageEl.textContent = message;
+
+      // Buttons container
+      const buttons = document.createElement('div');
+      buttons.style.marginTop = '20px';
+
+      // OK Button
+      const okButton = document.createElement('button');
+      Object.assign(okButton.style, {
+        marginRight: '10px',
+        padding: '8px 16px',
+        backgroundColor: '#c70707',
+        color: 'white',
+        border: 'none',
+        borderRadius: '4px',
+        cursor: 'pointer',
+      });
+      okButton.textContent = 'OK';
+      okButton.id = 'confirm-ok';
+
+      // Cancel Button
+      const cancelButton = document.createElement('button');
+      Object.assign(cancelButton.style, {
+        padding: '8px 16px',
+        backgroundColor: 'white',
+        border: '1px solid #000',
+        borderRadius: '4px',
+        cursor: 'pointer',
+      });
+      cancelButton.textContent = 'Cancel';
+      cancelButton.id = 'confirm-cancel';
+
+      // Assemble elements
+      buttons.append(okButton, cancelButton);
+      dialog.append(messageEl, buttons);
+      overlay.appendChild(dialog);
+      document.body.appendChild(overlay);
+
+      // Event listeners
+      okButton.addEventListener('click', () => {
+        document.body.removeChild(overlay);
+        resolve(true);
+      });
+
+      cancelButton.addEventListener('click', () => {
+        document.body.removeChild(overlay);
+        resolve(false);
+      });
+    });
   }
 }
