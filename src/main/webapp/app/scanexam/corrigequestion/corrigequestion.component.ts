@@ -3665,29 +3665,69 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
     this.LLMcolorShow = false;
     this.resp!.note = Number(grade);
     this.changeNote();
-    console.log('New comment', this.LLMComments);
-    for (let comment of this.LLMComments) {
-      const t: ITextComment = {
-        questionId: this.currentQuestion!.id,
-        text: comment.text!,
-        description: comment.description!,
-      };
-      this.textCommentService.create(t).subscribe(e => {
-        this.resp?.textcomments?.push(e.body!);
-        const currentComment = e.body!;
-        this.updateResponseRequest(this.resp!).subscribe(resp1 => {
-          this.resp = resp1.body!;
-          (currentComment as any).checked = true;
-          this.currentTextComment4Question?.push(signal(currentComment));
 
-          this.testdisableAndEnableKeyBoardShortCut.set(false);
-          this.populateDefaultShortCut();
-          setTimeout(() => {
-            this.testdisableAndEnableKeyBoardShortCut.set(true);
-          }, 300);
-          this.blocked = false;
-        });
-      });
+    try {
+      const existingComments = this.resp?.textcomments || [];
+      const commentsToCreate = [];
+      const existingMatchingComments = [];
+
+      for (const comment of this.LLMComments) {
+        const existingComment = existingComments.find(
+          ec => ec.text === comment.text && ec.description === comment.description && ec.questionId === this.currentQuestion!.id,
+        );
+
+        if (existingComment) {
+          existingMatchingComments.push(existingComment);
+        } else {
+          commentsToCreate.push({
+            questionId: this.currentQuestion!.id,
+            text: comment.text!,
+            description: comment.description!,
+          });
+        }
+      }
+
+      const commentPromises = commentsToCreate.map(comment => this.textCommentService.create(comment).toPromise());
+
+      const createdCommentsResponses = commentPromises.length > 0 ? await Promise.all(commentPromises) : [];
+
+      const createdComments = createdCommentsResponses.map(response => response!.body!);
+
+      const allRelevantComments = [...existingMatchingComments, ...createdComments];
+
+      for (const comment of allRelevantComments) {
+        const alreadyInUI = this.currentTextComment4Question?.some(tc => tc().id === comment.id);
+
+        if (!alreadyInUI) {
+          (comment as any).checked = true;
+          this.currentTextComment4Question?.push(signal(comment));
+        }
+      }
+
+      if (!this.resp!.textcomments) {
+        this.resp!.textcomments = [];
+      }
+
+      for (const comment of createdComments) {
+        if (!this.resp!.textcomments.some(tc => tc.id === comment.id)) {
+          this.resp!.textcomments.push(comment);
+        }
+      }
+
+      if (createdComments.length > 0) {
+        const updatedResponse = await this.updateResponseRequest(this.resp!).toPromise();
+        this.resp = updatedResponse!.body!;
+      }
+
+      this.testdisableAndEnableKeyBoardShortCut.set(false);
+      this.populateDefaultShortCut();
+      setTimeout(() => {
+        this.testdisableAndEnableKeyBoardShortCut.set(true);
+      }, 300);
+      this.blocked = false;
+    } catch (error) {
+      console.error('Error during comment creation or response update:', error);
+      this.blocked = false;
     }
   }
 
