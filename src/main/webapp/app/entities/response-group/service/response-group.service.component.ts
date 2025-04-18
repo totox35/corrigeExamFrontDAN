@@ -7,6 +7,7 @@ import { ApplicationConfigService } from 'app/core/config/application-config.ser
 import { getResponseGroupIdentifier } from 'app/entities/response-group/response-group.model';
 import { PredictionService } from 'app/entities/prediction/service/prediction.service';
 import { EmbeddingService } from 'app/scanexam/embedding/embedding.service';
+import { ITextComment } from 'app/entities/text-comment/text-comment.model';
 
 export type EntityResponseType = HttpResponse<IResponseGroup>;
 export type EntityArrayResponseType = HttpResponse<IResponseGroup[]>;
@@ -182,7 +183,7 @@ export class ResponseGroupService {
     }
   }
 
-  gradeAnswer(payload: { question: string; student_answer: string; max_grade: number; step: number }) {
+  gradeAnswer(payload: { question: string; student_answer: string; max_grade: number; step: number; existing_comments: ITextComment[] }) {
     return this.http.post<any>('http://localhost:8000/api/grade', payload);
   }
 }

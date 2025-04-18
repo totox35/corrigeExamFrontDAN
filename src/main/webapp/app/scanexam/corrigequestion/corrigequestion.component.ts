@@ -111,6 +111,7 @@ import { PredictionStudentResponseService } from '../mlt/prediction-studentrespo
 import Fuse from 'fuse.js';
 import { ResponseGroupService } from 'app/entities/response-group/service/response-group.service.component';
 import { over } from 'cypress/types/lodash';
+import { CreateCommentsComponent } from '../annotate-template/create-comments/create-comments.component';
 
 enum ScalePolicy {
   FitWidth = 1,
@@ -3598,7 +3599,19 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
   // Trying to Add LLama
 
   async doLLM() {
+    if (this.questions![0].gradeType == GradeType.DIRECT) {
+      this.doLLM4TextComments();
+    } else {
+      this.doLLM4GradedComments();
+    }
+  }
+
+  doLLM4TextComments() {
     const question_text = 'Comment un humain survivre?';
+
+    const existingComments: ITextComment[] = this.currentTextComment4Question
+      ? this.currentTextComment4Question.map(signal => signal()) // Unwrap each Signal
+      : [];
 
     this.responsegroupService
       .gradeAnswer({
@@ -3606,8 +3619,10 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
         student_answer: 'Il doivent respirer et boire du leau et manger pour survivre.',
         max_grade: this.maximumNote,
         step: this.noteStep,
+        existing_comments: existingComments,
       })
       .subscribe(async response => {
+        console.log(response);
         const fullText = response.response;
         console.log('LLM response:', fullText);
         const lines = fullText.split('\n');
@@ -3642,89 +3657,54 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
         if (currentTitle && currentComment) {
           comments.push({ title: currentTitle, content: currentComment });
         }
-
-        console.log('Extracted Grade:', grade);
-        console.log('Extracted Comments:', comments);
-
-        const old_note = this.showLLMGrade(grade, comments);
+        const old_note = this.showLLMGrade(grade, comments, existingComments);
 
         const confirmed = await this.customConfirm(this.translateService.instant('scanexam.acceptLLM'));
+        if (this.createdCommentsLength > 0) {
+          this.currentTextComment4Question!.splice(-this.createdCommentsLength);
+        }
 
         if (confirmed) {
-          this.currentTextComment4Question!.splice(-this.LLMComments.length);
-          this.acceptLLMGrading(grade);
+          this.acceptLLMGrading(grade, existingComments);
         } else {
           this.currentNote = Number(old_note);
-          this.currentTextComment4Question!.pop();
           this.LLMcolorShow = false;
         }
       });
   }
 
-  async acceptLLMGrading(grade: string) {
+  doLLM4GradedComments() {}
+
+  async acceptLLMGrading(grade: string, existingComments: ITextComment[]) {
     this.LLMcolorShow = false;
     this.resp!.note = Number(grade);
     this.changeNote();
-
     try {
-      const existingComments = this.resp?.textcomments || [];
-      const commentsToCreate = [];
-      const existingMatchingComments = [];
-
       for (const comment of this.LLMComments) {
-        const existingComment = existingComments.find(
-          ec => ec.text === comment.text && ec.description === comment.description && ec.questionId === this.currentQuestion!.id,
-        );
-
+        const existingComment = existingComments.find(ec => ec.id === comment.id);
         if (existingComment) {
-          existingMatchingComments.push(existingComment);
+          if (!(existingComment as any).checked) {
+            this.toggleTComment(existingComment);
+          }
         } else {
-          commentsToCreate.push({
-            questionId: this.currentQuestion!.id,
-            text: comment.text!,
-            description: comment.description!,
+          this.textCommentService.create(comment).subscribe(e => {
+            this.resp?.textcomments?.push(e.body!);
+            const currentComment = e.body!;
+            this.updateResponseRequest(this.resp!).subscribe(resp1 => {
+              this.resp = resp1.body!;
+              (currentComment as any).checked = true;
+              this.currentTextComment4Question?.push(signal(currentComment));
+
+              this.testdisableAndEnableKeyBoardShortCut.set(false);
+              this.populateDefaultShortCut();
+              setTimeout(() => {
+                this.testdisableAndEnableKeyBoardShortCut.set(true);
+              }, 300);
+              this.blocked = false;
+            });
           });
         }
       }
-
-      const commentPromises = commentsToCreate.map(comment => this.textCommentService.create(comment).toPromise());
-
-      const createdCommentsResponses = commentPromises.length > 0 ? await Promise.all(commentPromises) : [];
-
-      const createdComments = createdCommentsResponses.map(response => response!.body!);
-
-      const allRelevantComments = [...existingMatchingComments, ...createdComments];
-
-      for (const comment of allRelevantComments) {
-        const alreadyInUI = this.currentTextComment4Question?.some(tc => tc().id === comment.id);
-
-        if (!alreadyInUI) {
-          (comment as any).checked = true;
-          this.currentTextComment4Question?.push(signal(comment));
-        }
-      }
-
-      if (!this.resp!.textcomments) {
-        this.resp!.textcomments = [];
-      }
-
-      for (const comment of createdComments) {
-        if (!this.resp!.textcomments.some(tc => tc.id === comment.id)) {
-          this.resp!.textcomments.push(comment);
-        }
-      }
-
-      if (createdComments.length > 0) {
-        const updatedResponse = await this.updateResponseRequest(this.resp!).toPromise();
-        this.resp = updatedResponse!.body!;
-      }
-
-      this.testdisableAndEnableKeyBoardShortCut.set(false);
-      this.populateDefaultShortCut();
-      setTimeout(() => {
-        this.testdisableAndEnableKeyBoardShortCut.set(true);
-      }, 300);
-      this.blocked = false;
     } catch (error) {
       console.error('Error during comment creation or response update:', error);
       this.blocked = false;
@@ -3734,50 +3714,53 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
   LLMcolor: string = 'blue';
   LLMcolorShow: boolean = false;
   LLMComments: ITextComment[] = [];
-  showLLMGrade(grade: string, comments: { title: string; content: string }[]) {
+  createdCommentsLength: number = 0;
+  showLLMGrade(grade: string, comments: { title: string; content: string }[], existingComments: ITextComment[]) {
+    this.LLMComments = [];
+    this.createdCommentsLength = 0;
     this.LLMcolorShow = true;
     const old_note = this.currentNote;
-    this.currentNote = Number(grade)! / this.noteStep;
+    this.currentNote = Number(grade.replace(',', '.'))! / this.noteStep;
     comments.forEach(comment => {
       let newComment: ITextComment = {
+        questionId: this.currentQuestion!.id,
         description: comment.content,
         text: comment.title,
       };
-      this.LLMComments!.push(newComment);
-      this.currentTextComment4Question!.push(signal(newComment));
+
+      const existingComment = existingComments.find(
+        ec => ec.text === newComment.text && ec.description === newComment.description && ec.questionId === this.currentQuestion!.id,
+      );
+
+      if (existingComment) {
+        this.LLMComments!.push(existingComment);
+      } else {
+        this.LLMComments!.push(newComment);
+        this.createdCommentsLength++;
+        this.currentTextComment4Question!.push(signal(newComment));
+      }
     });
-    console.log('New comment', this.LLMComments);
     return old_note;
   }
 
   customConfirm(message: string): Promise<boolean> {
     return new Promise(resolve => {
-      // Create overlay
-      const overlay = document.createElement('div');
-      Object.assign(overlay.style, {
-        position: 'fixed',
-        top: '0',
-        left: '0',
-        width: '100%',
-        height: '100%',
-        zIndex: '9999',
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-      });
-
-      // Dialog container - now perfectly centered
+      // Create dialog container without a blocking overlay
       const dialog = document.createElement('div');
       Object.assign(dialog.style, {
+        position: 'fixed',
+        top: '50%',
+        left: '50%',
+        transform: 'translate(-50%, -50%)',
         backgroundColor: 'white',
         padding: '24px',
         border: '2px solid #000',
         borderRadius: '8px',
         boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)',
         maxWidth: '80%',
-        width: '300px', // Fixed width for better centering
+        width: '300px',
         textAlign: 'center',
-        margin: 'auto', // Ensures centering even if dimensions change
+        zIndex: '9999',
       });
 
       // Message element
@@ -3822,17 +3805,16 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
       // Assemble elements
       buttons.append(okButton, cancelButton);
       dialog.append(messageEl, buttons);
-      overlay.appendChild(dialog);
-      document.body.appendChild(overlay);
+      document.body.appendChild(dialog);
 
       // Event listeners
       okButton.addEventListener('click', () => {
-        document.body.removeChild(overlay);
+        document.body.removeChild(dialog);
         resolve(true);
       });
 
       cancelButton.addEventListener('click', () => {
-        document.body.removeChild(overlay);
+        document.body.removeChild(dialog);
         resolve(false);
       });
     });
