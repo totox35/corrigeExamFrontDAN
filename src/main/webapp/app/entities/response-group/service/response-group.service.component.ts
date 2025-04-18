@@ -186,4 +186,8 @@ export class ResponseGroupService {
   gradeAnswer(payload: { question: string; student_answer: string; max_grade: number; step: number; existing_comments: ITextComment[] }) {
     return this.http.post<any>('http://localhost:8000/api/grade', payload);
   }
+
+  proposeComments(payload: { question: string; student_answers: string[]; nb_comments: number }) {
+    return this.http.post<any>('http://localhost:8000/api/propose_comments', payload);
+  }
 }
