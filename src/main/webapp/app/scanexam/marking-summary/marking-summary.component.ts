@@ -15,6 +15,10 @@ import { TooltipModule } from 'primeng/tooltip';
 import { HasAnyAuthorityDirective } from '../../shared/auth/has-any-authority.directive';
 import { NgIf, NgFor, PercentPipe } from '@angular/common';
 import { ResponseGroupService } from 'app/entities/response-group/service/response-group.service.component';
+import { QuestionService } from 'app/entities/question/service/question.service';
+import { firstValueFrom } from 'rxjs';
+import { ITextComment } from 'app/entities/text-comment/text-comment.model';
+import { TextCommentService } from 'app/entities/text-comment/service/text-comment.service';
 
 @Component({
   selector: 'jhi-marking-summary',
@@ -57,6 +61,8 @@ export class MarkingSummaryComponent implements OnInit {
     private titleService: Title,
     private http: HttpClient,
     private responsegroupService: ResponseGroupService,
+    private questionService: QuestionService,
+    private textCommentService: TextCommentService,
   ) {}
 
   public ngOnInit(): void {
@@ -130,18 +136,92 @@ export class MarkingSummaryComponent implements OnInit {
 
   //Adding LLM
 
-  proposeComments(): void {
+  proposeComments(qId: number): void {
     this.getCommentNumber('Please enter number of comments you want:').then(result => {
       if (result.confirmed && result.value !== null) {
         this.responsegroupService
           .proposeComments({
             question: 'Comment un humain survivre?',
             student_answers: ['Il doivent respirer et boire du leau et manger pour survivre.', 'Je ne sais pas'],
-            nb_comments: 5,
+            nb_comments: result.value,
           })
           .subscribe(async response => {
             console.log(response);
+            const fullText = response.response;
+            const lines = fullText.split('\n');
+            let comments = [];
+
+            let currentTitle = '';
+            let currentComment = '';
+            for (let i = 0; i < lines.length; i++) {
+              const line = lines[i].trim();
+
+              if (line.match(/^Titre (du|de) [Cc]ommentaire \d+\s*:/)) {
+                // Si on était déjà en train de traiter un commentaire, on l'ajoute
+                if (currentTitle && currentComment) {
+                  comments.push({ title: currentTitle, content: currentComment });
+                }
+
+                // Commencer un nouveau titre
+                currentTitle = line.replace(/^Titre (du|de) [Cc]ommentaire \d+\s*:/, '').trim();
+                currentComment = '';
+              } else if (line.match(/^[Cc]ommentaire \d+\s*:/)) {
+                currentComment = line.replace(/^[Cc]ommentaire \d+\s*:/, '').trim();
+              }
+            }
+
+            // Ajouter le dernier commentaire s'il existe
+            if (currentTitle && currentComment) {
+              comments.push({ title: currentTitle, content: currentComment });
+            }
+
+            // Mock test
+            // comments = [
+            //   {
+            //     title: "Éléments vitaux incomplets",
+            //     content: "La réponse ne mentionne pas tous les éléments vitaux nécessaires à la survie humaine."
+            //   },
+            //   {
+            //     title: "Expression confuse",
+            //     content: "La formulation de la réponse manque de clarté et contient des erreurs grammaticales."
+            //   }
+            // ];
+
+            const creationPromises = comments.map(comment => {
+              const newComment: ITextComment = {
+                questionId: qId,
+                text: comment.title,
+                description: comment.content,
+                // studentResponses will be empty by default
+              };
+
+              return firstValueFrom(this.textCommentService.create(newComment));
+            });
+
+            try {
+              // Wait for all comments to be created
+              const createdComments = await Promise.all(creationPromises);
+              console.log('All comments created successfully:', createdComments);
+
+              // You could trigger a refresh or navigate to see the new comments
+              // For example:
+              // this.router.navigate(['/question', qId]);
+              // Or simply show a success message
+            } catch (error) {
+              console.error('Error creating comments:', error);
+            }
           });
+      }
+    });
+  }
+
+  refreshQuestion(qId: number): void {
+    this.questionService.find(qId).subscribe(response => {
+      if (response.body) {
+        // Here you could update your local state, or navigate to refresh
+        console.log('Refreshed question data:', response.body);
+        // If you're using a router, you could navigate to refresh:
+        // this.router.navigate(['/question', qId]);
       }
     });
   }
