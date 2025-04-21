@@ -8,6 +8,7 @@ import { getResponseGroupIdentifier } from 'app/entities/response-group/response
 import { PredictionService } from 'app/entities/prediction/service/prediction.service';
 import { EmbeddingService } from 'app/scanexam/embedding/embedding.service';
 import { ITextComment } from 'app/entities/text-comment/text-comment.model';
+import { IGradedComment } from 'app/entities/graded-comment/graded-comment.model';
 
 export type EntityResponseType = HttpResponse<IResponseGroup>;
 export type EntityArrayResponseType = HttpResponse<IResponseGroup[]>;
@@ -183,11 +184,39 @@ export class ResponseGroupService {
     }
   }
 
-  gradeAnswer(payload: { question: string; student_answer: string; max_grade: number; step: number; existing_comments: ITextComment[] }) {
-    return this.http.post<any>('http://localhost:8000/api/grade', payload);
+  gradeAnswerTComment(payload: {
+    question: string;
+    student_answer: string;
+    max_grade: number;
+    step: number;
+    existing_comments: ITextComment[];
+  }) {
+    return this.http.post<any>('http://localhost:8000/api/grade_with_text_comments', payload);
   }
 
-  proposeComments(payload: { question: string; student_answers: string[]; nb_comments: number }) {
-    return this.http.post<any>('http://localhost:8000/api/propose_comments', payload);
+  gradeAnswerGComment(payload: {
+    question: string;
+    student_answer: string;
+    max_grade: number;
+    step: number;
+    existing_comments: IGradedComment[];
+    grade_type: string;
+  }) {
+    return this.http.post<any>('http://localhost:8000/api/grade_with_graded_comments', payload);
+  }
+
+  proposeTComments(payload: { question: string; student_answers: string[]; nb_comments: number }) {
+    return this.http.post<any>('http://localhost:8000/api/propose_text_comments', payload);
+  }
+
+  proposeGComments(payload: {
+    question: string;
+    student_answers: string[];
+    nb_comments: number;
+    grade_type: string;
+    step: number;
+    max_grade: number;
+  }) {
+    return this.http.post<any>('http://localhost:8000/api/propose_graded_comments', payload);
   }
 }

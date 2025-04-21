@@ -19,6 +19,10 @@ import { QuestionService } from 'app/entities/question/service/question.service'
 import { firstValueFrom } from 'rxjs';
 import { ITextComment } from 'app/entities/text-comment/text-comment.model';
 import { TextCommentService } from 'app/entities/text-comment/service/text-comment.service';
+import { GradeType } from 'app/entities/enumerations/grade-type.model';
+import { grad } from '@tensorflow/tfjs';
+import { IGradedComment } from 'app/entities/graded-comment/graded-comment.model';
+import { GradedCommentService } from 'app/entities/graded-comment/service/graded-comment.service';
 
 @Component({
   selector: 'jhi-marking-summary',
@@ -63,6 +67,7 @@ export class MarkingSummaryComponent implements OnInit {
     private responsegroupService: ResponseGroupService,
     private questionService: QuestionService,
     private textCommentService: TextCommentService,
+    private gradedCommentService: GradedCommentService,
   ) {}
 
   public ngOnInit(): void {
@@ -137,93 +142,166 @@ export class MarkingSummaryComponent implements OnInit {
   //Adding LLM
 
   proposeComments(qId: number): void {
-    this.getCommentNumber('Please enter number of comments you want:').then(result => {
+    this.getCommentNumber('Please enter number of comments you want:').then(async result => {
       if (result.confirmed && result.value !== null) {
-        this.responsegroupService
-          .proposeComments({
-            question: 'Comment un humain survivre?',
-            student_answers: ['Il doivent respirer et boire du leau et manger pour survivre.', 'Je ne sais pas'],
-            nb_comments: result.value,
-          })
-          .subscribe(async response => {
-            console.log(response);
-            const fullText = response.response;
-            const lines = fullText.split('\n');
-            let comments = [];
-
-            let currentTitle = '';
-            let currentComment = '';
-            for (let i = 0; i < lines.length; i++) {
-              const line = lines[i].trim();
-
-              if (line.match(/^Titre (du|de) [Cc]ommentaire \d+\s*:/)) {
-                // Si on était déjà en train de traiter un commentaire, on l'ajoute
-                if (currentTitle && currentComment) {
-                  comments.push({ title: currentTitle, content: currentComment });
-                }
-
-                // Commencer un nouveau titre
-                currentTitle = line.replace(/^Titre (du|de) [Cc]ommentaire \d+\s*:/, '').trim();
-                currentComment = '';
-              } else if (line.match(/^[Cc]ommentaire \d+\s*:/)) {
-                currentComment = line.replace(/^[Cc]ommentaire \d+\s*:/, '').trim();
-              }
-            }
-
-            // Ajouter le dernier commentaire s'il existe
-            if (currentTitle && currentComment) {
-              comments.push({ title: currentTitle, content: currentComment });
-            }
-
-            // Mock test
-            // comments = [
-            //   {
-            //     title: "Éléments vitaux incomplets",
-            //     content: "La réponse ne mentionne pas tous les éléments vitaux nécessaires à la survie humaine."
-            //   },
-            //   {
-            //     title: "Expression confuse",
-            //     content: "La formulation de la réponse manque de clarté et contient des erreurs grammaticales."
-            //   }
-            // ];
-
-            const creationPromises = comments.map(comment => {
-              const newComment: ITextComment = {
-                questionId: qId,
-                text: comment.title,
-                description: comment.content,
-                // studentResponses will be empty by default
-              };
-
-              return firstValueFrom(this.textCommentService.create(newComment));
-            });
-
-            try {
-              // Wait for all comments to be created
-              const createdComments = await Promise.all(creationPromises);
-              console.log('All comments created successfully:', createdComments);
-
-              // You could trigger a refresh or navigate to see the new comments
-              // For example:
-              // this.router.navigate(['/question', qId]);
-              // Or simply show a success message
-            } catch (error) {
-              console.error('Error creating comments:', error);
-            }
-          });
+        const q = (await firstValueFrom(this.questionService.find(qId))).body;
+        if (q?.gradeType == GradeType.DIRECT) {
+          this.proposeTComments(qId, result.value);
+        } else {
+          this.proposeGComments(qId, result.value, q?.gradeType!, q!.step!, q!.point!);
+        }
       }
     });
   }
 
-  refreshQuestion(qId: number): void {
-    this.questionService.find(qId).subscribe(response => {
-      if (response.body) {
-        // Here you could update your local state, or navigate to refresh
-        console.log('Refreshed question data:', response.body);
-        // If you're using a router, you could navigate to refresh:
-        // this.router.navigate(['/question', qId]);
-      }
-    });
+  proposeTComments(qId: number, nbComments: number) {
+    this.responsegroupService
+      .proposeTComments({
+        question: 'Expliquez la différence entre une variable dépendante et une variable indépendante dans une expérience scientifique.',
+        student_answers: [
+          'La variable dépendante est celle que l’on modifie.',
+          ' La variable indépendante dépend du résultat.',
+          'La variable dépendante est ce que l’on mesure à la fin.',
+          ' Je pense que la variable indépendante est le facteur que l’on contrôle.',
+          'La variable indépendante est influencée par les changements de la variable dépendante.',
+        ],
+        nb_comments: nbComments,
+      })
+      .subscribe(async response => {
+        console.log(response);
+        const fullText = response.response;
+        const lines = fullText.split('\n');
+        let comments = [];
+
+        let currentTitle = '';
+        let currentComment = '';
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i].trim();
+
+          if (line.match(/^Titre (du|de) [Cc]ommentaire \d+\s*:/)) {
+            // Si on était déjà en train de traiter un commentaire, on l'ajoute
+            if (currentTitle && currentComment) {
+              comments.push({ title: currentTitle, content: currentComment });
+            }
+
+            // Commencer un nouveau titre
+            currentTitle = line.replace(/^Titre (du|de) [Cc]ommentaire \d+\s*:/, '').trim();
+            currentComment = '';
+          } else if (line.match(/^[Cc]ommentaire \d+\s*:/)) {
+            currentComment = line.replace(/^[Cc]ommentaire \d+\s*:/, '').trim();
+          }
+        }
+
+        // Ajouter le dernier commentaire s'il existe
+        if (currentTitle && currentComment) {
+          comments.push({ title: currentTitle, content: currentComment });
+        }
+
+        // Mock test
+        // comments = [
+        //   {
+        //     title: "Éléments vitaux incomplets",
+        //     content: "La réponse ne mentionne pas tous les éléments vitaux nécessaires à la survie humaine."
+        //   },
+        //   {
+        //     title: "Expression confuse",
+        //     content: "La formulation de la réponse manque de clarté et contient des erreurs grammaticales."
+        //   }
+        // ];
+
+        const creationPromises = comments.map(comment => {
+          const newComment: ITextComment = {
+            questionId: qId,
+            text: comment.title,
+            description: comment.content,
+            // studentResponses will be empty by default
+          };
+
+          return firstValueFrom(this.textCommentService.create(newComment));
+        });
+
+        try {
+          const createdComments = await Promise.all(creationPromises);
+          console.log('All comments created successfully:', createdComments);
+        } catch (error) {
+          console.error('Error creating comments:', error);
+        }
+      });
+  }
+
+  proposeGComments(qId: number, nbComments: number, type: string, step: number, max_grade: number) {
+    let grade_type = '';
+    if (type === GradeType.NEGATIVE) {
+      grade_type = 'negative';
+    } else {
+      grade_type = 'positif';
+    }
+    this.responsegroupService
+      .proposeGComments({
+        question: 'Expliquez la différence entre une variable dépendante et une variable indépendante dans une expérience scientifique.',
+        student_answers: ['Il doivent respirer et boire du leau et manger pour survivre.', 'Je ne sais pas'],
+        nb_comments: nbComments,
+        grade_type: grade_type,
+        step: step,
+        max_grade: max_grade,
+      })
+      .subscribe(async response => {
+        console.log(response);
+        const fullText = response.response;
+        const lines = fullText.split('\n');
+        let comments = [];
+
+        let currentTitle = '';
+        let currentComment = '';
+        let commentGrade: number | null = null;
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i].trim();
+
+          if (line.match(/^Titre (du|de) [Cc]ommentaire \d+\s*:/)) {
+            // Si on était déjà en train de traiter un commentaire, on l'ajoute
+            if (currentTitle && currentComment && commentGrade !== null) {
+              comments.push({ title: currentTitle, content: currentComment, grade: commentGrade });
+            }
+
+            // Commencer un nouveau titre
+            currentTitle = line.replace(/^Titre (du|de) [Cc]ommentaire \d+\s*:/, '').trim();
+            currentComment = '';
+          } else if (line.match(/^[Cc]ommentaire \d+\s*:/)) {
+            currentComment = line.replace(/^[Cc]ommentaire \d+\s*:/, '').trim();
+          } else if (line.match(/^Note du commentaire\s*\d+\s*:/)) {
+            const raw = line.replace(/^Note du commentaire\s*\d+\s*:/, '').trim();
+            const parts = raw.split('/');
+            const cleaned = parts[0].replace(',', '.').replace(/^[-−]/, '');
+            let parsedGrade = parseFloat(cleaned);
+            let stepGrade = Math.round(parsedGrade / step);
+            commentGrade = stepGrade;
+          }
+        }
+
+        // Ajouter le dernier commentaire s'il existe
+        if (currentTitle && currentComment && commentGrade !== null) {
+          comments.push({ title: currentTitle, content: currentComment, grade: commentGrade });
+        }
+
+        console.log('Graded comments:', comments);
+        const creationPromises = comments.map(comment => {
+          const newComment: IGradedComment = {
+            questionId: qId,
+            text: comment.title,
+            description: comment.content,
+            grade: comment.grade,
+          };
+
+          return firstValueFrom(this.gradedCommentService.create(newComment));
+        });
+
+        try {
+          const createdComments = await Promise.all(creationPromises);
+          console.log('All comments created successfully:', createdComments);
+        } catch (error) {
+          console.error('Error creating comments:', error);
+        }
+      });
   }
 
   getCommentNumber(message: string): Promise<{ confirmed: boolean; value: number | null }> {

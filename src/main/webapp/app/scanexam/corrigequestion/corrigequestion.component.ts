@@ -3598,7 +3598,15 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
 
   // Trying to Add LLama
 
+  LLMcolor: string = 'blue';
+  LLMcolorShow: boolean = false;
+  LLMTComments: ITextComment[] = [];
+  LLMGComments: IGradedComment[] = [];
+  createdTCommentsLength: number = 0;
+  createdGCommentsLength: number = 0;
+
   async doLLM() {
+    console.log(this.resp?.textcomments);
     if (this.questions![0].gradeType == GradeType.DIRECT) {
       this.doLLM4TextComments();
     } else {
@@ -3607,16 +3615,18 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
   }
 
   doLLM4TextComments() {
-    const question_text = 'Comment un humain survivre?';
+    const question_text =
+      'Expliquez la différence entre une variable dépendante et une variable indépendante dans une expérience scientifique.';
 
     const existingComments: ITextComment[] = this.currentTextComment4Question
       ? this.currentTextComment4Question.map(signal => signal()) // Unwrap each Signal
       : [];
 
     this.responsegroupService
-      .gradeAnswer({
+      .gradeAnswerTComment({
         question: question_text,
-        student_answer: 'Il doivent respirer et boire du leau et manger pour survivre.',
+        student_answer:
+          'La variable dépendante est celle que l’on change, tandis que la variable indépendante est ce que l’on mesure à la fin de l’expérience.',
         max_grade: this.maximumNote,
         step: this.noteStep,
         existing_comments: existingComments,
@@ -3657,15 +3667,15 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
         if (currentTitle && currentComment) {
           comments.push({ title: currentTitle, content: currentComment });
         }
-        const old_note = this.showLLMGrade(grade, comments, existingComments);
+        const old_note = this.showLLMGradeTComments(grade, comments, existingComments);
 
         const confirmed = await this.customConfirm(this.translateService.instant('scanexam.acceptLLM'));
-        if (this.createdCommentsLength > 0) {
-          this.currentTextComment4Question!.splice(-this.createdCommentsLength);
+        if (this.createdTCommentsLength > 0) {
+          this.currentTextComment4Question!.splice(-this.createdTCommentsLength);
         }
 
         if (confirmed) {
-          this.acceptLLMGrading(grade, existingComments);
+          this.acceptLLMGradingTComments(grade, existingComments);
         } else {
           this.currentNote = Number(old_note);
           this.LLMcolorShow = false;
@@ -3673,51 +3683,197 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
       });
   }
 
-  doLLM4GradedComments() {}
+  doLLM4GradedComments() {
+    console.log(this.currentGradedComment4Question);
+    let grade_type = '';
+    if (this.questions![0].gradeType === GradeType.NEGATIVE) {
+      grade_type = 'negative';
+    } else {
+      grade_type = 'positif';
+    }
+    const question_text =
+      'Expliquez la différence entre une variable dépendante et une variable indépendante dans une expérience scientifique.';
 
-  async acceptLLMGrading(grade: string, existingComments: ITextComment[]) {
+    const existingComments: IGradedComment[] = this.currentGradedComment4Question
+      ? this.currentGradedComment4Question.map(signal => signal()) // Unwrap each Signal
+      : [];
+
+    this.responsegroupService
+      .gradeAnswerGComment({
+        question: question_text,
+        student_answer:
+          'La variable dépendante est celle que l’on change, tandis que la variable indépendante est ce que l’on mesure à la fin de l’expérience.',
+        max_grade: this.maximumNote,
+        step: this.noteStep,
+        existing_comments: existingComments,
+        grade_type: grade_type,
+      })
+      .subscribe(async response => {
+        console.log(response);
+        const fullText = response.response;
+        console.log('LLM response:', fullText);
+        const lines = fullText.split('\n');
+        let grade = 'N/A';
+        let comments = [];
+
+        let currentTitle = '';
+        let currentComment = '';
+        let commentGrade: number | null = null;
+
+        // Extraire la note et les commentaires
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i].trim();
+
+          if (line.match(/^Titre (du|de) [Cc]ommentaire \d+\s*:/)) {
+            // Si on était déjà en train de traiter un commentaire, on l'ajoute
+            if (currentTitle && currentComment && commentGrade !== null) {
+              comments.push({ title: currentTitle, content: currentComment, grade: commentGrade });
+            }
+
+            // Commencer un nouveau titre
+            currentTitle = line.replace(/^Titre (du|de) [Cc]ommentaire \d+\s*:/, '').trim();
+            currentComment = '';
+          } else if (line.match(/^[Cc]ommentaire \d+\s*:/)) {
+            currentComment = line.replace(/^[Cc]ommentaire \d+\s*:/, '').trim();
+          } else if (line.match(/^Note du commentaire\s*\d+\s*:/)) {
+            const raw = line.replace(/^Note du commentaire\s*\d+\s*:/, '').trim();
+            const parts = raw.split('/');
+            const cleaned = parts[0].replace(',', '.').replace(/^[-−]/, '');
+            let parsedGrade = parseFloat(cleaned);
+            let stepGrade = Math.round(parsedGrade / this.step);
+            commentGrade = stepGrade;
+          }
+        }
+
+        // Ajouter le dernier commentaire s'il existe
+        if (currentTitle && currentComment && commentGrade !== null) {
+          comments.push({ title: currentTitle, content: currentComment, grade: commentGrade });
+        }
+
+        const old_note = this.showLLMGradeGComments(grade, comments, existingComments);
+
+        const confirmed = await this.customConfirm(this.translateService.instant('scanexam.acceptLLM'));
+        if (this.createdGCommentsLength > 0) {
+          this.currentGradedComment4Question!.splice(-this.createdGCommentsLength);
+        }
+
+        if (confirmed) {
+          this.acceptLLMGradingGComments(grade, existingComments);
+        } else {
+          this.currentNote = Number(old_note);
+          this.LLMcolorShow = false;
+        }
+      });
+  }
+
+  async acceptLLMGradingTComments(grade: string, existingComments: ITextComment[]) {
     this.LLMcolorShow = false;
     this.resp!.note = Number(grade);
     this.changeNote();
+    const commentPromises = [];
+
+    if (this.resp!.textcomments == undefined || this.resp?.textcomments.length == 0) {
+      this.resp!.textcomments = [];
+    }
+
     try {
-      for (const comment of this.LLMComments) {
+      for (const comment of this.LLMTComments) {
         const existingComment = existingComments.find(ec => ec.id === comment.id);
+        const alreadyLinked = this.resp?.textcomments?.some(tc => tc.id === comment.id);
+
         if (existingComment) {
-          if (!(existingComment as any).checked) {
+          if (!alreadyLinked && !(existingComment as any).checked) {
             this.toggleTComment(existingComment);
           }
         } else {
-          this.textCommentService.create(comment).subscribe(e => {
-            this.resp?.textcomments?.push(e.body!);
-            const currentComment = e.body!;
-            this.updateResponseRequest(this.resp!).subscribe(resp1 => {
-              this.resp = resp1.body!;
+          commentPromises.push(
+            firstValueFrom(this.textCommentService.create(comment)).then(e => {
+              const currentComment = e.body!;
+              const stillLinked = this.resp?.textcomments?.some(tc => tc.id === currentComment.id);
+
+              if (!stillLinked) {
+                this.resp?.textcomments?.push(currentComment);
+              }
+
               (currentComment as any).checked = true;
               this.currentTextComment4Question?.push(signal(currentComment));
-
-              this.testdisableAndEnableKeyBoardShortCut.set(false);
-              this.populateDefaultShortCut();
-              setTimeout(() => {
-                this.testdisableAndEnableKeyBoardShortCut.set(true);
-              }, 300);
-              this.blocked = false;
-            });
-          });
+            }),
+          );
         }
       }
+
+      await Promise.all(commentPromises);
+
+      const updated = await firstValueFrom(this.updateResponseRequest(this.resp!));
+      this.resp = updated.body!;
+
+      this.testdisableAndEnableKeyBoardShortCut.set(false);
+      this.populateDefaultShortCut();
+      setTimeout(() => {
+        this.testdisableAndEnableKeyBoardShortCut.set(true);
+      }, 300);
+      this.blocked = false;
     } catch (error) {
-      console.error('Error during comment creation or response update:', error);
+      console.error('Final error during bulk text comment handling:', error);
       this.blocked = false;
     }
   }
 
-  LLMcolor: string = 'blue';
-  LLMcolorShow: boolean = false;
-  LLMComments: ITextComment[] = [];
-  createdCommentsLength: number = 0;
-  showLLMGrade(grade: string, comments: { title: string; content: string }[], existingComments: ITextComment[]) {
-    this.LLMComments = [];
-    this.createdCommentsLength = 0;
+  async acceptLLMGradingGComments(grade: string, existingComments: IGradedComment[]) {
+    this.LLMcolorShow = false;
+    const commentPromises = [];
+
+    if (this.resp!.gradedcomments == undefined || this.resp?.gradedcomments.length == 0) {
+      this.resp!.gradedcomments = [];
+    }
+
+    for (const comment of this.LLMGComments) {
+      const existingComment = existingComments.find(ec => ec.id === comment.id);
+      const alreadyLinked = this.resp?.gradedcomments?.some(gc => gc.id === comment.id);
+
+      if (existingComment) {
+        if (!alreadyLinked) {
+          this.toggleGComment(existingComment);
+        }
+      } else {
+        commentPromises.push(
+          firstValueFrom(this.gradedCommentService.create(comment)).then(e => {
+            const currentComment = e.body!;
+            const stillLinked = this.resp?.gradedcomments?.some(gc => gc.id === currentComment.id);
+
+            if (!stillLinked) {
+              this.resp?.gradedcomments?.push(currentComment);
+            }
+
+            (currentComment as any).checked = true;
+            this.currentGradedComment4Question?.push(signal(currentComment));
+          }),
+        );
+      }
+    }
+
+    try {
+      await Promise.all(commentPromises);
+
+      // Once all are safely created, now do a single update
+      const updated = await firstValueFrom(this.updateResponseRequest(this.resp!));
+      this.resp = updated.body!;
+
+      this.testdisableAndEnableKeyBoardShortCut.set(false);
+      this.populateDefaultShortCut();
+      setTimeout(() => {
+        this.testdisableAndEnableKeyBoardShortCut.set(true);
+      }, 300);
+      this.blocked = false;
+    } catch (error) {
+      console.error('Final error during bulk graded comment handling:', error);
+      this.blocked = false;
+    }
+  }
+
+  showLLMGradeTComments(grade: string, comments: { title: string; content: string }[], existingComments: ITextComment[]) {
+    this.LLMTComments = [];
+    this.createdTCommentsLength = 0;
     this.LLMcolorShow = true;
     const old_note = this.currentNote;
     this.currentNote = Number(grade.replace(',', '.'))! / this.noteStep;
@@ -3733,11 +3889,40 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
       );
 
       if (existingComment) {
-        this.LLMComments!.push(existingComment);
+        this.LLMTComments!.push(existingComment);
       } else {
-        this.LLMComments!.push(newComment);
-        this.createdCommentsLength++;
+        this.LLMTComments!.push(newComment);
+        this.createdTCommentsLength++;
         this.currentTextComment4Question!.push(signal(newComment));
+      }
+    });
+    return old_note;
+  }
+
+  showLLMGradeGComments(grade: string, comments: { title: string; content: string; grade: number }[], existingComments: IGradedComment[]) {
+    this.LLMGComments = [];
+    this.createdGCommentsLength = 0;
+    this.LLMcolorShow = true;
+    const old_note = this.currentNote;
+    this.currentNote = Number(grade.replace(',', '.'))! / this.noteStep;
+    comments.forEach(comment => {
+      let newComment: IGradedComment = {
+        questionId: this.currentQuestion!.id,
+        description: comment.content,
+        text: comment.title,
+        grade: comment.grade,
+      };
+
+      const existingComment = existingComments.find(
+        ec => ec.text === newComment.text && ec.description === newComment.description && ec.questionId === this.currentQuestion!.id,
+      );
+
+      if (existingComment) {
+        this.LLMGComments!.push(existingComment);
+      } else {
+        this.LLMGComments!.push(newComment);
+        this.createdGCommentsLength++;
+        this.currentGradedComment4Question!.push(signal(newComment));
       }
     });
     return old_note;
