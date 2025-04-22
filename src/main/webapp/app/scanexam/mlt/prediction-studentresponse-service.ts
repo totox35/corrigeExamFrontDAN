@@ -10,8 +10,8 @@ import { AlignImagesService } from '../services/align-images.service';
 import { PredictionService } from 'app/entities/prediction/service/prediction.service';
 import { CoupageDimageService } from './coupage-dimage.service';
 import { MLTService } from './mlt.service';
-import { IPrediction } from 'app/entities/prediction/prediction.model';
 import { ResponseGroupService } from 'app/entities/response-group/service/response-group.service.component';
+import { EmbeddingService } from '../embedding/embedding.service';
 
 interface ExamPageImage {
   imageData: ImageData;
@@ -38,6 +38,7 @@ export class PredictionStudentResponseService {
     private coupageDimageService: CoupageDimageService,
     private mlt: MLTService,
     private responseGroupService: ResponseGroupService,
+    private embeddingService: EmbeddingService,
   ) {}
 
   predictStudentResponsesFromQuestionIds(examId: number, questionId: number): Subject<number[]> {
@@ -58,6 +59,7 @@ export class PredictionStudentResponseService {
     const predictionResponseId = predictionResponse.map(e => e.id);
 
     const q = _q.body || undefined;
+    const predictions: { [key: number]: string } = {};
 
     if (q !== undefined) {
       const _qs = await firstValueFrom(this.questionService.query({ numero: q.numero, examId }));
@@ -93,10 +95,33 @@ export class PredictionStudentResponseService {
             };
             await this.handlePrediction(newImage);
             subject.next([currenthandling, max]);
+            // Collect prediction text
+            if (newImage.prediction) {
+              predictions[newImage.sheetId] = newImage.prediction;
+            }
           } catch (error: any) {
             console.error('Error cropping image:', error);
           }
         }
+      }
+    }
+
+    try {
+      await firstValueFrom(this.embeddingService.initializeModel());
+    } catch (error) {
+      console.error('Error initializing the model:', error);
+      subject.error('Error initializing the model');
+      return;
+    }
+
+    // Calculate embeddings for all predictions
+    if (Object.keys(predictions).length > 0) {
+      const embeddings = await firstValueFrom(this.embeddingService.sendAlltexts(predictions));
+      // Use embeddings to create or update response groups
+      for (const [sheetId, embedding] of Object.entries(embeddings)) {
+        const sheetIdNumber = Number(sheetId);
+        const embeddingArray = embedding as number[];
+        await this.responseGroupService.assignPredictionToResponseGroupUsingEmbedding(sheetIdNumber, questionId, embeddingArray);
       }
     }
     return;
@@ -114,7 +139,6 @@ export class PredictionStudentResponseService {
           index: index1,
           value: value1,
         }))) {
-          // const base64Line = `data:image/png;base64,${refinedLine}`;
           const imgData = new ImageData(new Uint8ClampedArray(value), coupageResponse.widths[index], coupageResponse.heights[index]);
           const lineResult = await this.mlt.executeMLTFromImagData(imgData, coupageResponse.widths[index], coupageResponse.heights[index]);
 
@@ -127,26 +151,12 @@ export class PredictionStudentResponseService {
       }
       // Store and set prediction if we got any results
       if (prediction) {
-        const predictionData: IPrediction = {
-          sheetId: image.sheetId,
-          questionId: image.questionId,
-          text: prediction.trim(),
-          questionNumber: image.questionNumero,
-        };
-
-        const newPrediction = (await firstValueFrom(this.predictionService.create(predictionData))).body;
-        if (newPrediction?.id && newPrediction?.questionId) {
-          this.responseGroupService.assignPredictionToResponseGroup(newPrediction.id, newPrediction.questionId);
-          const responseGroups = this.responseGroupService.findByQuestionId(newPrediction.id);
-          // eslint-disable-next-line no-console
-          console.log('Groups:', responseGroups);
-        }
         image.prediction = prediction.trim();
       } else {
         image.prediction = 'No prediction available';
       }
 
-      // Clear large data after processing
+      // Clear data after processing
       if (image.imageData) {
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
         // @ts-expect-error

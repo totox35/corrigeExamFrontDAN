@@ -65,6 +65,33 @@ export class ResponseGroupService {
     return this.http.get<IResponseGroup>(`${this.resourceUrl}/prediction/${predictionId}`, { observe: 'response' });
   }
 
+  async assignPredictionToResponseGroupUsingEmbedding(sheetId: number, questionId: number, embedding: number[]): Promise<void> {
+    const responseGroupsResponse = await firstValueFrom(this.findByQuestionId(questionId));
+    let maxSimilarity = 0;
+    let bestResponseGroup: IResponseGroup | null = null;
+    for (const responseGroup of responseGroupsResponse.body!) {
+      const similarity = this.calculateSimilarity(responseGroup.averageEmbedding!, embedding);
+      if (maxSimilarity < similarity && similarity > 0.5) {
+        maxSimilarity = similarity;
+        bestResponseGroup = responseGroup;
+      }
+    }
+    if (bestResponseGroup) {
+      bestResponseGroup.predictionIds?.push(sheetId);
+      this.updateAverageEmbedding(bestResponseGroup, embedding);
+      await firstValueFrom(this.update(bestResponseGroup));
+      console.log('I updated the group', bestResponseGroup);
+    } else {
+      const newResponseGroup: IResponseGroup = {
+        questionId,
+        predictionIds: [sheetId],
+        averageEmbedding: embedding,
+      };
+      const returnObject = await firstValueFrom(this.create(newResponseGroup));
+      console.log('I created the group', returnObject.body);
+    }
+  }
+
   async assignPredictionToResponseGroup(predictionId: number, questionId: number): Promise<void> {
     const responseGroupResponse = await firstValueFrom(this.findByPredictionId(predictionId));
     if (responseGroupResponse.body?.id !== undefined) {
@@ -171,7 +198,8 @@ export class ResponseGroupService {
         return [];
       }
 
-      const embedding = await this.embeddingService.executeEmbeddingFromText(predictionText);
+      // Extract the embedding from the Observable
+      const embedding = await firstValueFrom(this.embeddingService.executeEmbeddingFromText(predictionText));
       if (embedding) {
         return Array.from(embedding); // Convert Float32Array to regular array
       }

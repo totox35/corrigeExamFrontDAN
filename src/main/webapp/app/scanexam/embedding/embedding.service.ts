@@ -24,4 +24,9 @@ export class EmbeddingService {
   executeEmbeddingFromText(text: string): Observable<Float32Array | undefined> {
     return this.submitDataForEmbedding([text]).pipe(map(embeddings => embeddings[0]));
   }
+
+  sendAlltexts(predictions: { [key: number]: string }): Observable<any> {
+    const texts = Object.values(predictions);
+    return this.submitDataForEmbedding(texts);
+  }
 }
