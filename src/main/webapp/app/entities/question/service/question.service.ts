@@ -39,6 +39,10 @@ export class QuestionService {
     return this.http.get<IQuestion>(`${this.resourceUrl}/${id}`, { observe: 'response' });
   }
 
+  findQuestionByZoneOrTitleZoneId(zoneId: number): Observable<EntityArrayResponseType> {
+    return this.http.get<IQuestion[]>(`${this.resourceUrl}/byzone/${zoneId}`, { observe: 'response' });
+  }
+
   query(req?: any): Observable<EntityArrayResponseType> {
     const options = createRequestOption(req);
     return this.http.get<IQuestion[]>(this.resourceUrl, { params: options, observe: 'response' });

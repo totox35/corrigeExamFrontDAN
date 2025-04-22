@@ -121,17 +121,34 @@ export class FabricCanvasComponent implements OnInit, OnDestroy {
       ezone.type = DrawingTools.INEBOX;
       this.renderZone(ezone);
     }
+
     const qs = await firstValueFrom(this.questionService.query({ examId: this.exam.id! }));
 
-    if (qs.body?.length !== undefined && qs.body?.length > 0) {
+    if (qs.body?.length) {
       for (const q of qs.body) {
-        if (q.id !== undefined) {
+        if (q.id) {
           this.eventHandler.questions.set(q.id, q);
+
+          // Charger la zone de réponse
+          if (q.zoneId) {
+            const zResponse = await firstValueFrom(this.zoneService.find(q.zoneId));
+            if (zResponse.body) {
+              const ezoneResponse = zResponse.body as CustomZone;
+              ezoneResponse.type = DrawingTools.QUESTIONBOX;
+              this.renderZone(ezoneResponse);
+            }
+          }
+
+          // Charger la zone d'intitulé
+          if (q.titleZoneId) {
+            const zTitle = await firstValueFrom(this.zoneService.find(q.titleZoneId));
+            if (zTitle.body) {
+              const ezoneTitle = zTitle.body as CustomZone;
+              ezoneTitle.type = DrawingTools.QUESTIONBOX;
+              this.renderZone(ezoneTitle);
+            }
+          }
         }
-        const z = await firstValueFrom(this.zoneService.find(q.zoneId!));
-        const ezone = z.body as CustomZone;
-        ezone.type = DrawingTools.QUESTIONBOX;
-        this.renderZone(ezone);
       }
     }
   }

@@ -62,6 +62,9 @@ export class EventHandlerService {
   private previousScaleY!: number;
   private _isMouseDown = false;
   private _selectedColour: DrawingColours = DrawingColours.BLACK;
+  private isFirstQuestionBox = false;
+  private tempZoneId: number | undefined;
+  private tempCustomObject: CustomFabricObject | undefined;
 
   private drawingToolObserver: (d: DrawingTools) => void = () => {};
   private confService!: ConfirmationService;
@@ -293,9 +296,17 @@ export class EventHandlerService {
         break;
 
       case DrawingTools.QUESTIONBOX:
-        this.translateService.get('scanexam.questionuc1').subscribe((name: string) => {
-          this.createBlueBox(DrawingTools.QUESTIONBOX, name + String(num), num);
-        });
+        if (!this.isFirstQuestionBox) {
+          // Première sélection (intitulé)
+          this.translateService.get('scanexam.questionuc1statement').subscribe((name: string) => {
+            this.createBlueBox(DrawingTools.QUESTIONBOX, name + String(num), num);
+          });
+        } else {
+          // Deuxième sélection (réponse)
+          this.translateService.get('scanexam.questionuc1answer').subscribe((name: string) => {
+            this.createBlueBox(DrawingTools.QUESTIONBOX, name + String(num), num);
+          });
+        }
         break;
     }
 
@@ -313,10 +324,14 @@ export class EventHandlerService {
   }
 
   private createBlueBox(
-    type: DrawingTools.NOMBOX | DrawingTools.PRENOMBOX | DrawingTools.INEBOX | DrawingTools.QUESTIONBOX,
+    type: DrawingTools.QUESTIONBOX | DrawingTools.NOMBOX | DrawingTools.PRENOMBOX | DrawingTools.INEBOX | DrawingTools.QUESTIONBOX,
     boxName: string,
     qnum: number,
   ): void {
+    if (!this._elementUnderDrawing) {
+      return;
+    }
+
     this._elementUnderDrawing = this.fabricShapeService.createBox(
       this.canvas,
       this._elementUnderDrawing as CustomFabricRect,
@@ -324,9 +339,9 @@ export class EventHandlerService {
       DrawingColours.BLUE,
     );
 
-    const customObject = this._elementUnderDrawing;
-    const z = this.createZone(this._elementUnderDrawing);
-    const uid = this._elementUnderDrawing.id;
+    const customObject = this._elementUnderDrawing as CustomFabricObject;
+    const z = this.createZone(customObject);
+    const uid = customObject.id;
 
     this.zoneService.create(z).subscribe(z1 => {
       const ezone = z1.body! as CustomZone;
@@ -337,44 +352,53 @@ export class EventHandlerService {
       switch (type) {
         case DrawingTools.NOMBOX:
           this._exam.namezoneId = z1.body!.id!;
+          this.examService.update(this._exam).subscribe(() => {
+            this.selectedTool = DrawingTools.SELECT;
+          });
           break;
         case DrawingTools.INEBOX:
           this._exam.idzoneId = z1.body!.id!;
+          this.examService.update(this._exam).subscribe(() => {
+            this.selectedTool = DrawingTools.SELECT;
+          });
           break;
         case DrawingTools.PRENOMBOX:
           this._exam.firstnamezoneId = z1.body!.id!;
+          this.examService.update(this._exam).subscribe(() => {
+            this.selectedTool = DrawingTools.SELECT;
+          });
+          break;
+        case DrawingTools.QUESTIONBOX:
+          if (!this.isFirstQuestionBox) {
+            this.tempZoneId = z1.body!.id!;
+            this.tempCustomObject = customObject;
+            this.isFirstQuestionBox = true;
+          } else {
+            const pref = this.preferenceService.getPreferenceForQuestion();
+            const q = new Question();
+            q.titleZoneId = this.tempZoneId;
+            q.zoneId = z1.body!.id!;
+            q.examId = this._exam.id;
+            q.typeId = pref.typeId;
+            q.numero = qnum;
+            q.point = pref.point;
+            q.step = pref.step;
+            q.gradeType = pref.gradeType;
+            q.canBeNegative = false;
+            q.canExceedTheMax = false;
+            q.mustBeIgnoreInGlobalScale = false;
+
+            this.questionService.create(q).subscribe(resq => {
+              if (resq.body?.id) {
+                this.questions.set(resq.body.id, resq.body);
+                this.selectedTool = DrawingTools.SELECT;
+              }
+            });
+            this.isFirstQuestionBox = false;
+          }
           break;
       }
-
-      if (type === DrawingTools.QUESTIONBOX) {
-        const pref = this.preferenceService.getPreferenceForQuestion();
-        const q = new Question();
-        q.zoneId = z1.body!.id!;
-        q.examId = this._exam.id;
-        q.typeId = pref.typeId;
-        q.numero = qnum;
-        q.point = pref.point;
-        q.step = pref.step;
-        q.gradeType = pref.gradeType;
-        q.canBeNegative = false;
-        q.canExceedTheMax = false;
-        q.mustBeIgnoreInGlobalScale = false;
-        this.questionService.create(q).subscribe(() => {
-          this.selectedTool = DrawingTools.SELECT;
-
-          // Adding the question to the canvas and selecting it
-          this.eraseAddQuestion(z1.body!.id!, true).then(() => {
-            this.selectQuestion(customObject);
-            this.canvas.setActiveObject(customObject);
-            this.canvas.renderAll();
-          });
-        });
-      } else {
-        this.examService.update(this._exam).subscribe(e => {
-          this._exam = e.body!;
-          this.selectedTool = DrawingTools.SELECT;
-        });
-      }
+      this.canvas.renderAll();
     });
   }
 
@@ -412,26 +436,59 @@ export class EventHandlerService {
 
   public createRedQuestionBox(zone: IZone, page: number): void {
     const canvas = this.allcanvas.get(page);
-    if (canvas !== undefined) {
-      this.translateService.get('scanexam.questionuc1').subscribe((name: string) => {
-        this.questionService.query({ zoneId: zone.id }).subscribe(e => {
-          if (e.body !== null && e.body.length > 0) {
-            const r = this.fabricShapeService.createBoxFromScratch(
-              canvas,
-              {
-                x: (zone.xInit! * this.pages[page].pageViewer.canvas.clientWidth) / this.coefficient,
-                y: (zone.yInit! * this.pages[page].pageViewer.canvas.clientHeight) / this.coefficient,
-              },
-              (zone.width! * this.pages[page].pageViewer.canvas.clientWidth) / this.coefficient,
-              (zone.height! * this.pages[page].pageViewer.canvas.clientHeight) / this.coefficient,
-              name + String(e.body[0].numero),
-              DrawingColours.GREEN,
-            );
-            this.modelViewpping.set(r.id, zone.id!);
-          }
-        });
-      });
+    if (!canvas || !zone.id) {
+      return;
     }
+
+    // Vérifier si une box existe déjà
+    const existingBox = canvas.getObjects().find(obj => {
+      const objZoneId = this.modelViewpping.get((obj as CustomFabricObject).id);
+      return objZoneId === zone.id;
+    });
+
+    if (existingBox) {
+      return;
+    }
+
+    this.questionService.query({ examId: this._exam.id }).subscribe(questions => {
+      const question = questions.body?.find(q => q.zoneId === zone.id || q.titleZoneId === zone.id);
+      if (question) {
+        // Déterminer si c'est une zone d'intitulé ou de réponse
+        const isTitle = question.titleZoneId === zone.id;
+        const translationKey = isTitle ? 'scanexam.questionuc1statement' : 'scanexam.questionuc1answer';
+
+        this.translateService.get(translationKey).subscribe((name: string) => {
+          const r = this.fabricShapeService.createBoxFromScratch(
+            canvas,
+            {
+              x: (zone.xInit! * this.pages[page].pageViewer.canvas.clientWidth) / this.coefficient,
+              y: (zone.yInit! * this.pages[page].pageViewer.canvas.clientHeight) / this.coefficient,
+            },
+            (zone.width! * this.pages[page].pageViewer.canvas.clientWidth) / this.coefficient,
+            (zone.height! * this.pages[page].pageViewer.canvas.clientHeight) / this.coefficient,
+            name + String(question.numero),
+            DrawingColours.GREEN,
+          );
+          this.modelViewpping.set(r.id, zone.id!);
+        });
+      }
+    });
+  }
+
+  // Nouvelle méthode utilitaire pour éviter la duplication de code
+  private createQuestionBox(canvas: PagedCanvas, zone: IZone, page: number, name: string, numero: number): void {
+    const r = this.fabricShapeService.createBoxFromScratch(
+      canvas,
+      {
+        x: (zone.xInit! * this.pages[page].pageViewer.canvas.clientWidth) / this.coefficient,
+        y: (zone.yInit! * this.pages[page].pageViewer.canvas.clientHeight) / this.coefficient,
+      },
+      (zone.width! * this.pages[page].pageViewer.canvas.clientWidth) / this.coefficient,
+      (zone.height! * this.pages[page].pageViewer.canvas.clientHeight) / this.coefficient,
+      name + String(numero),
+      DrawingColours.GREEN,
+    );
+    this.modelViewpping.set(r.id, zone.id!);
   }
 
   public initPage(page: number, pageViewer: any): void {
@@ -464,18 +521,15 @@ export class EventHandlerService {
    */
   private selectQuestion(object: CustomFabricObject): void {
     const id = this.modelViewpping.get(object.id);
-    // Finding the question corresponding to the zone id from the cache
-    const question = typeof id === 'number' ? [...this.questions.values()].find(q => q.zoneId === id) : undefined;
 
-    if (question !== undefined && this.isAQuestion(object)) {
-      // // Getting all the questions with the same number (one question divided into several parts)
-      // let questions = [...this.questions.values()].filter(q => q.numero === question.numero);
-      // // Need to put the truely selected question at first position in the array
-      // questions = [question, ...questions.filter(q => q.id !== question.id)];
-      // Notifying that this bunch of questions is selected
+    // Rechercher la question associée à l'ID de la zone (intitulé ou réponse)
+    const question = typeof id === 'number' ? [...this.questions.values()].find(q => q.zoneId === id || q.titleZoneId === id) : undefined;
 
-      this.currentSelected = (object as CustomFabricGroup).getObjects()[1];
+    if (question !== undefined) {
+      this.currentSelected = object;
       this._selectedQuestion.next(question);
+    } else {
+      this.unselectObject();
     }
   }
 
@@ -484,9 +538,10 @@ export class EventHandlerService {
     this.previousTop = object.top!;
     this.previousScaleX = object.scaleX!;
     this.previousScaleY = object.scaleY!;
+
     switch (this._selectedTool) {
       case DrawingTools.SELECT:
-        this.selectQuestion(object);
+        this.selectQuestion(object); // Appeler la méthode pour sélectionner la question
         break;
 
       case DrawingTools.ERASER:
@@ -766,7 +821,6 @@ export class EventHandlerService {
   }
 
   public reinit(exam: IExam, zones: { [page: number]: CustomZone[] }): void {
-    // Requires to flush all the cached canvases to compute new ones
     this.cleanCanvassCache();
     this._exam = exam;
     this.zonesRendering = zones;
@@ -775,8 +829,9 @@ export class EventHandlerService {
     this._elementUnderDrawing = undefined;
     this._selectedTool = DrawingTools.SELECT;
     this.questions.clear();
+    this.translateService.setDefaultLang('fr');
+    this.translateService.use('fr');
   }
-
   public getNextQuestionNumero(): number {
     const next = new Set(Array.from(this.questions.values()).map(value => value.numero!));
     let i = 1;

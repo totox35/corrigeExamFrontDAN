@@ -14,7 +14,8 @@ export interface IQuestion {
   gradeType?: GradeType | null;
   textcomments?: ITextComment[] | null;
   gradedcomments?: IGradedComment[] | null;
-  zoneId?: number;
+  zoneId?: number; // Zone de réponse
+  titleZoneId?: number; // Zone d'intitulé
   typeAlgoName?: string;
   typeId?: number;
   examName?: string;
@@ -41,7 +42,8 @@ export class Question implements IQuestion {
     public gradeType?: GradeType | null,
     public textcomments?: ITextComment[] | null,
     public gradedcomments?: IGradedComment[] | null,
-    public zoneId?: number,
+    public zoneId?: number, // Zone de réponse
+    public titleZoneId?: number, // Zone d'intitulé
     public typeAlgoName?: string,
     public typeId?: number,
     public examName?: string,
