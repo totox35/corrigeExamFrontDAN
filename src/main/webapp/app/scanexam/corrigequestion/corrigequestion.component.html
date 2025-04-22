@@ -967,6 +967,8 @@
                   <!--[cancel]="false"-->
 
                   <p-rating
+                    [class.llm-red-stars]="LLMcolorShow"
+                    class="custom-rating"
                     [disabled]="
                       blocked &&
                       currentQuestion !== undefined &&
@@ -1090,7 +1092,7 @@
             style="padding-left: 0.5rem; padding-right: 0.5rem; padding-top: 0.2rem; padding-bottom: 0.2rem"
             class="sm:col-3 md:col-3 lg:col-12 xl:col-12"
           >
-            <div class="card" [style]="getStyle(comment)">
+            <div class="card" [class.llm-red-comment]="LLMcolorShow && LLMTComments.includes(comment)" [style]="getStyle(comment)">
               <div class="card-body">
                 <span class="float-end" (click)="removeTextComment(comment)">
                   <fa-icon icon="trash"></fa-icon>
@@ -1237,7 +1239,7 @@
             style="padding-left: 0.5rem; padding-right: 0.5rem; padding-top: 0.2rem; padding-bottom: 0.2rem"
             class="sm:col-3 md:col-3 lg:col-12 xl:col-12"
           >
-            <div class="card" [style]="getStyle(comment)">
+            <div class="card" [class.llm-red-comment]="LLMcolorShow && LLMGComments.includes(comment)" [style]="getStyle(comment)">
               <div class="card-body">
                 <span *ngIf="currentQuestion?.typeAlgoName !== 'QCM'" class="float-end clickable" (click)="removeGradedComment(comment)"
                   ><fa-icon icon="trash"></fa-icon
@@ -1846,6 +1848,17 @@
             </div>
           </div>
         </div>
+        <button
+          class="sm:text-xs md:text-xs lg:text-base"
+          styleClass="md:text-xs sm:p-button-sm md:p-button-sm lg:p-button"
+          *ngIf="this.currentQuestion?.typeAlgoName === 'manuscrit'"
+          pButton
+          (click)="doLLM()"
+          [pTooltip]="'scanexam.doLLM' | translate"
+          [tooltipZIndex]="'3000'"
+          [label]="'scanexam.doLLM' | translate"
+          [disabled]="blocked"
+        ></button>
       </div>
 
       <!--<div class="col-4 md:col-4 overflow-hidden">

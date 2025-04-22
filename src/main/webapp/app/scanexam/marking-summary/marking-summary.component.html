@@ -58,6 +58,16 @@
             >
               <span jhiTranslate="scanexam.voirtoutescopies"></span>
             </button>
+            <button
+              (click)="proposeComments(q.id)"
+              class="p-element p-ripple sm:w-full md:w-6 lg:w-4 xl:w-3 justify-content-center"
+              pButton
+              type="button"
+              [tooltipZIndex]="'3000'"
+              [pTooltip]="'scanexam.proposeComments' | translate"
+            >
+              <span jhiTranslate="scanexam.proposeComments"></span>
+            </button>
           </div>
 
           <div class="col" *ngIf="q.answeredSheets !== 0 && q.answeredSheets < dataExam.sheets.length">
@@ -82,6 +92,16 @@
               [pTooltip]="'scanexam.voirtoutescopiestooltip' | translate"
             >
               <span jhiTranslate="scanexam.voirtoutescopies"></span>
+            </button>
+            <button
+              (click)="proposeComments(q.id)"
+              class="p-element p-ripple sm:w-full md:w-6 lg:w-4 xl:w-3 justify-content-center"
+              pButton
+              type="button"
+              [tooltipZIndex]="'3000'"
+              [pTooltip]="'scanexam.proposeComments' | translate"
+            >
+              <span jhiTranslate="scanexam.proposeComments"></span>
             </button>
           </div>
           <div class="col" *ngIf="q.answeredSheets === dataExam.sheets.length">

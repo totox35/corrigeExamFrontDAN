@@ -84,3 +84,31 @@ p-galleria ::ng-deep .p-galleria {
   padding-right: 0.5rem !important;
   padding-top: 0.8rem !important;
 }
+
+:host ::ng-deep .llm-red-stars {
+  .p-rating-icon {
+    color: #c70707 !important;
+    opacity: 1;
+  }
+  .p-rating-icon.p-rating-icon-active {
+    color: #c70707 !important;
+  }
+  svg {
+    fill: #c70707 !important;
+  }
+}
+
+:host ::ng-deep .llm-red-comment {
+  background-color: rgba(199, 7, 7, 0.1) !important; // Light red background
+  border-color: #c70707 !important; // Red border
+
+  .card-title,
+  .card-text {
+    color: #c70707 !important; // Red text for title and description
+  }
+
+  // Optional: Style icons (e.g., trash, edit) to match
+  .fa-icon {
+    color: #c70707 !important;
+  }
+}

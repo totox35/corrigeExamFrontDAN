@@ -579,6 +579,9 @@
     "filterallexamsheets": "Recherche par mot clé sur l'ensemble des copies :",
     "filterallexamsheetsTooltip": "Applique la recherche sur l'ensemble des prédictions des copies (pas seulement sur celles qui semblent au départ proche sémantiquement).",
     "toomuchsimilarResults": "Trop de réponses similaires trouvées",
-    "pausePerformPrediction": "PAUSE"
+    "pausePerformPrediction": "PAUSE",
+    "acceptLLM": "Acceptez-vous le classement recommandé ?",
+    "doLLM": "Proposez une classement",
+    "proposeComments": "Propose Comments"
   }
 }
