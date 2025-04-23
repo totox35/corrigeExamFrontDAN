@@ -593,7 +593,6 @@ export class EventHandlerService {
         this.zoneService.delete(zid).subscribe();
         this.modelViewpping.delete(customObject.id);
         await this.eraseObjectI(object);
-        this.renumberQuestionsAfterDelete();
       }
     } else {
       await this.eraseObjectI(object);
@@ -854,51 +853,5 @@ export class EventHandlerService {
 
   public selectQuestionView(q: IQuestion): void {
     this._selectedQuestion.next(q);
-  }
-
-  private renumberQuestionsAfterDelete(): void {
-    this.questionService.query({ examId: this._exam.id }).subscribe(res => {
-      const questions = res.body || [];
-
-      // Sort questions by their current numero (ascending)
-      questions.sort((a, b) => a.numero! - b.numero!);
-
-      questions.forEach((q, index) => {
-        const newNumero = index + 1;
-
-        // Only update if the numero is incorrect
-        if (q.numero !== newNumero) {
-          q.numero = newNumero;
-
-          // Update the question number in the database
-          this.questionService.update(q).subscribe({
-            next: () => {
-              console.log(`Question ${q.id} updated to numero ${newNumero}`);
-            },
-            error: err => {
-              console.error('Failed to update question:', err);
-            },
-          });
-        }
-      });
-
-      setTimeout(() => {
-        this.refreshQuestionList();
-      }, 500);
-    });
-  }
-
-  private refreshQuestionList(): void {
-    this.questionService.query({ examId: this._exam.id }).subscribe(res => {
-      this.questions.clear(); // Clear your local question map
-      (res.body || []).forEach(q => {
-        if (q.id !== undefined) {
-          this.questions.set(q.id, q); // Refill with updated questions
-        }
-      });
-
-      // Optionally trigger change detection or refresh UI manually here
-      this.canvas.renderAll(); // If you're using fabric.js, this helps re-render
-    });
   }
 }
