@@ -393,6 +393,18 @@
               (click)="deletePrediction4Question()"
               [disabled]="blocked"
             ></button>
+            <button
+              class="sm:text-xs md:text-xs lg:text-base"
+              styleClass="md:text-xs sm:p-button-sm md:p-button-sm lg:p-button"
+              type="text"
+              *ngIf="this.currentQuestion?.typeAlgoName === 'manuscrit'"
+              pButton
+              [pTooltip]="'scanexam.deletemanuscriptcorrect' | translate"
+              [tooltipZIndex]="'3000'"
+              [label]="'scanexam.proposeComments' | translate"
+              (click)="proposeComments()"
+              [disabled]="blocked"
+            ></button>
             <button [hidden]="!debug" type="text" pButton [label]="'reset'" (click)="removeAllAnswer()"></button>
           </div>
 
