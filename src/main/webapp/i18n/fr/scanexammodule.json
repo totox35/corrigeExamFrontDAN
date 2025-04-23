@@ -581,7 +581,7 @@
     "toomuchsimilarResults": "Trop de réponses similaires trouvées",
     "pausePerformPrediction": "PAUSE",
     "acceptLLM": "Acceptez-vous le classement recommandé ?",
-    "doLLM": "Proposez une classement",
+    "doLLM": "Proposez un classement",
     "proposeComments": "Propose Comments"
   }
 }

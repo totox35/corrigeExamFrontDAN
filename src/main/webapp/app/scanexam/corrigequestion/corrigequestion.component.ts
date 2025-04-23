@@ -3478,7 +3478,7 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
 
   async initSimilarPrediction() {
     const nbStudents = this.numberPagesInScan! / this.nbreFeuilleParCopie!;
-    if (this.allpredictions.length != nbStudents) {
+    if (this.allpredictions.length !== nbStudents) {
       // Show popup/alert
       this.confirmationService.confirm({
         message: this.translateService.instant('scanexam.noPredictionDoAnalyseOCR'),
@@ -3713,8 +3713,8 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
         const fullText = response.response;
         console.log('LLM response:', fullText);
         const lines = fullText.split('\n');
-        let grade = 'N/A';
-        let comments = [];
+        const grade = 'N/A';
+        const comments = [];
 
         let currentTitle = '';
         let currentComment = '';
@@ -3739,8 +3739,8 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
             const raw = line.replace(/^Note du commentaire\s*\d+\s*:/, '').trim();
             const parts = raw.split('/');
             const cleaned = parts[0].replace(',', '.').replace(/^[-−]/, '');
-            let parsedGrade = parseFloat(cleaned);
-            let stepGrade = Math.round(parsedGrade / this.step);
+            const parsedGrade = parseFloat(cleaned);
+            const stepGrade = Math.round(parsedGrade / this.step);
             commentGrade = stepGrade;
           }
         }
@@ -3772,7 +3772,7 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
     this.changeNote();
     const commentPromises = [];
 
-    if (this.resp!.textcomments == undefined || this.resp?.textcomments.length == 0) {
+    if (this.resp!.textcomments === undefined || this.resp?.textcomments!.length === 0 || this.resp?.textcomments === null) {
       this.resp!.textcomments = [];
     }
 
@@ -3782,7 +3782,7 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
         const alreadyLinked = this.resp?.textcomments?.some(tc => tc.id === comment.id);
 
         if (existingComment) {
-          if (!alreadyLinked && !(existingComment as any).checked) {
+          if (!alreadyLinked && !this.active.get(existingComment.id!)!()) {
             this.toggleTComment(existingComment);
           }
         } else {
@@ -3795,7 +3795,16 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
                 this.resp?.textcomments?.push(currentComment);
               }
 
+              if (!this.active.has(currentComment.id!)) {
+                this.active.set(currentComment.id!, signal(true));
+              } else {
+                this.active.get(currentComment.id!)!.set(true);
+              }
+
+              this.closeEditComment(currentComment);
+
               (currentComment as any).checked = true;
+
               this.currentTextComment4Question?.push(signal(currentComment));
             }),
           );
@@ -3821,41 +3830,50 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
 
   async acceptLLMGradingGComments(grade: string, existingComments: IGradedComment[]) {
     this.LLMcolorShow = false;
+    this.resp!.note = Number(grade);
+    this.changeNote();
     const commentPromises = [];
 
-    if (this.resp!.gradedcomments == undefined || this.resp?.gradedcomments.length == 0) {
+    if (this.resp!.gradedcomments === undefined || this.resp?.gradedcomments!.length === 0 || this.resp?.gradedcomments === null) {
       this.resp!.gradedcomments = [];
     }
 
-    for (const comment of this.LLMGComments) {
-      const existingComment = existingComments.find(ec => ec.id === comment.id);
-      const alreadyLinked = this.resp?.gradedcomments?.some(gc => gc.id === comment.id);
-
-      if (existingComment) {
-        if (!alreadyLinked) {
-          this.toggleGComment(existingComment);
-        }
-      } else {
-        commentPromises.push(
-          firstValueFrom(this.gradedCommentService.create(comment)).then(e => {
-            const currentComment = e.body!;
-            const stillLinked = this.resp?.gradedcomments?.some(gc => gc.id === currentComment.id);
-
-            if (!stillLinked) {
-              this.resp?.gradedcomments?.push(currentComment);
-            }
-
-            (currentComment as any).checked = true;
-            this.currentGradedComment4Question?.push(signal(currentComment));
-          }),
-        );
-      }
-    }
-
     try {
+      for (const comment of this.LLMGComments) {
+        const existingComment = existingComments.find(ec => ec.id === comment.id);
+        const alreadyLinked = this.resp?.gradedcomments?.some(gc => gc.id === comment.id);
+
+        if (existingComment) {
+          if (!alreadyLinked && !this.active.get(existingComment.id!)!()) {
+            this.toggleGComment(existingComment);
+          }
+        } else {
+          commentPromises.push(
+            firstValueFrom(this.gradedCommentService.create(comment)).then(e => {
+              const currentComment = e.body!;
+              const stillLinked = this.resp?.gradedcomments?.some(gc => gc.id === currentComment.id);
+
+              if (!stillLinked) {
+                this.resp?.gradedcomments?.push(currentComment);
+              }
+
+              if (!this.active.has(currentComment.id!)) {
+                this.active.set(currentComment.id!, signal(true));
+              } else {
+                this.active.get(currentComment.id!)!.set(true);
+              }
+
+              this.closeEditComment(currentComment);
+
+              (currentComment as any).checked = true;
+              this.currentGradedComment4Question?.push(signal(currentComment));
+            }),
+          );
+        }
+      }
+
       await Promise.all(commentPromises);
 
-      // Once all are safely created, now do a single update
       const updated = await firstValueFrom(this.updateResponseRequest(this.resp!));
       this.resp = updated.body!;
 
@@ -3878,7 +3896,7 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
     const old_note = this.currentNote;
     this.currentNote = Number(grade.replace(',', '.'))! / this.noteStep;
     comments.forEach(comment => {
-      let newComment: ITextComment = {
+      const newComment: ITextComment = {
         questionId: this.currentQuestion!.id,
         description: comment.content,
         text: comment.title,
@@ -3894,6 +3912,7 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
         this.LLMTComments!.push(newComment);
         this.createdTCommentsLength++;
         this.currentTextComment4Question!.push(signal(newComment));
+        this.active.set(newComment.id!, signal(true)); // Set the active signal to true
       }
     });
     return old_note;
@@ -3906,7 +3925,7 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
     const old_note = this.currentNote;
     this.currentNote = Number(grade.replace(',', '.'))! / this.noteStep;
     comments.forEach(comment => {
-      let newComment: IGradedComment = {
+      const newComment: IGradedComment = {
         questionId: this.currentQuestion!.id,
         description: comment.content,
         text: comment.title,
@@ -3923,6 +3942,7 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
         this.LLMGComments!.push(newComment);
         this.createdGCommentsLength++;
         this.currentGradedComment4Question!.push(signal(newComment));
+        this.active.set(newComment.id!, signal(true)); // Set the active signal to true
       }
     });
     return old_note;
