@@ -112,6 +112,8 @@ import Fuse from 'fuse.js';
 import { ResponseGroupService } from 'app/entities/response-group/service/response-group.service.component';
 import { over } from 'cypress/types/lodash';
 import { CreateCommentsComponent } from '../annotate-template/create-comments/create-comments.component';
+import { CoupageDimageService } from '../mlt/coupage-dimage.service';
+import { MLTService } from '../mlt/mlt.service';
 
 enum ScalePolicy {
   FitWidth = 1,
@@ -350,6 +352,8 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
     private http: HttpClient,
     private predictionStudentResponseService: PredictionStudentResponseService,
     private responsegroupService: ResponseGroupService,
+    private coupageDimageService: CoupageDimageService,
+    private mlt: MLTService,
   ) {
     effect(() => {
       this.testdisableAndEnableKeyBoardShortCutSignal = this.testdisableAndEnableKeyBoardShortCut();
@@ -3606,6 +3610,7 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
   createdGCommentsLength: number = 0;
 
   async doLLM() {
+    this.getQuestionText();
     if (this.questions![0].gradeType == GradeType.DIRECT) {
       this.doLLM4TextComments();
     } else {
@@ -3683,7 +3688,6 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
   }
 
   doLLM4GradedComments() {
-    console.log(this.currentGradedComment4Question);
     let grade_type = '';
     if (this.questions![0].gradeType === GradeType.NEGATIVE) {
       grade_type = 'negative';
@@ -4022,6 +4026,49 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
         resolve(false);
       });
     });
+  }
+
+  // LLM for comment proposition
+  async getQuestionText() {
+    const q = (await firstValueFrom(this.questionService.find(this.questionId!))).body;
+    console.log('Question:', q!);
+    // Get the title zone
+    const titleZone = await firstValueFrom(this.zoneService.find(q!.titleZoneId!));
+    const z = titleZone.body;
+
+    // Calculate page number
+    const pagewithoffset = this.currentStudent! * this.nbreFeuilleParCopie! + z!.pageNumber! + this.pageOffset;
+    const pagewithoutoffset = this.currentStudent! * this.nbreFeuilleParCopie! + z!.pageNumber!;
+    let page = pagewithoutoffset;
+    if (pagewithoffset > 0 && pagewithoffset <= this.numberPagesInScan!) {
+      page = pagewithoffset;
+    }
+
+    // Get the image
+    const imagezone = await this.getAllImage4Zone(page, z!, true);
+
+    // Use the ImageData directly from imagezone.i
+    const coupageResponse = await firstValueFrom(this.coupageDimageService.runScript(imagezone.i));
+    let question_text = ' ';
+
+    // Process each refined line
+    if (coupageResponse.linesbase64) {
+      for (const { index, value } of coupageResponse.linesbase64.map((value1: any, index1: number) => ({
+        index: index1,
+        value: value1,
+      }))) {
+        const imgData = new ImageData(new Uint8ClampedArray(value), coupageResponse.widths[index], coupageResponse.heights[index]);
+
+        const lineResult = await this.mlt.executeMLTFromImagData(imgData, coupageResponse.widths[index], coupageResponse.heights[index]);
+
+        if (lineResult) {
+          question_text += lineResult + '\n';
+        }
+      }
+    }
+
+    console.log('Text:', question_text.trim());
+    return question_text;
   }
 
   proposeComments(): void {
