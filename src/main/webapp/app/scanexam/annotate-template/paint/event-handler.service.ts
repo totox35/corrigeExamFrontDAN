@@ -559,44 +559,47 @@ export class EventHandlerService {
    */
   private async eraseObject(object: FabricObject): Promise<void> {
     const customObject = object as CustomFabricObject;
-    // Getting the zone id
     const zid = this.modelViewpping.get(customObject.id);
 
-    if (zid !== undefined) {
-      if (this.isAQuestion(object)) {
-        // TODO check the number of AnswerFor This Question I more than one add a check
-        const nbrAnswer = await firstValueFrom(this.zoneService.countStudentResponseForZone(zid));
-        if (nbrAnswer.body === 0) {
-          await this.eraseAddQuestion(zid, false);
-          await firstValueFrom(this.zoneService.delete(zid));
-          this.modelViewpping.delete(customObject.id);
-          await this.eraseObjectI(object);
-        } else {
-          this.translateService.get('scanexam.removeAnnotationQuestion').subscribe(name => {
-            this.confService.confirm({
-              message: name,
-              accept: () => {
-                this.eraseAddQuestion(zid, false).then(() => {
-                  firstValueFrom(this.zoneService.delete(zid)).then(() => {
-                    this.modelViewpping.delete(customObject.id);
-                    this.eraseObjectI(object);
-                  });
-                });
-              },
-              reject: () => {
-                this.selectedTool = DrawingTools.SELECT;
-              },
-            });
-          });
+    if (zid != null) {
+      //On cherche dans le cache la question liée à cette zone
+      const question = [...this.questions.values()].find(q => q.zoneId === zid || q.titleZoneId === zid);
+
+      if (question) {
+        const zoneIdsToDelete = [question.zoneId, question.titleZoneId].filter(id => id != null) as number[];
+
+        //On repère tous les objets à enlever
+        const toRemove: FabricObject[] = [];
+        this.canvas.getObjects().forEach(obj => {
+          const objZoneId = this.modelViewpping.get((obj as CustomFabricObject).id);
+          if (objZoneId != null && zoneIdsToDelete.includes(objZoneId)) {
+            toRemove.push(obj);
+            this.modelViewpping.delete((obj as CustomFabricObject).id);
+          }
+        });
+
+        //On supprime côté serveur les zones
+        for (const zoneId of zoneIdsToDelete) {
+          await firstValueFrom(this.zoneService.delete(zoneId));
         }
-      } else {
-        this.zoneService.delete(zid).subscribe();
-        this.modelViewpping.delete(customObject.id);
-        await this.eraseObjectI(object);
+        this.questions.delete(question.id!);
+
+        for (const obj of toRemove) {
+          await this.eraseObjectI(obj);
+        }
+
+        this.canvas.renderAll();
+        return;
       }
-    } else {
-      await this.eraseObjectI(object);
+
+      // sinon, zone “classique” : on la supprime seule
+      await firstValueFrom(this.zoneService.delete(zid));
+      this.modelViewpping.delete(customObject.id);
     }
+
+    // suppression standard
+    await this.eraseObjectI(object);
+    this.canvas.renderAll();
   }
 
   async eraseObjectI(object: FabricObject): Promise<void> {
