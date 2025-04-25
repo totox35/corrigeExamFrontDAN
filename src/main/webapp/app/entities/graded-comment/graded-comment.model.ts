@@ -9,6 +9,7 @@ export interface IGradedComment {
   questionId?: number;
   studentResponses?: IStudentResponse[];
   shortcut?: string | string[];
+  generated?: boolean;
 }
 
 export class GradedComment implements IGradedComment {
@@ -21,6 +22,7 @@ export class GradedComment implements IGradedComment {
     public questionId?: number,
     public studentResponses?: IStudentResponse[],
     public shortcut?: string | string[],
+    public generated?: boolean,
   ) {}
 }
 

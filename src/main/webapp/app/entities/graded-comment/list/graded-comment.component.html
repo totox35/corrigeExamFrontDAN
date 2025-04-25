@@ -65,6 +65,11 @@
               <a [routerLink]="['/question', gradedComment.questionId, 'view']">{{ gradedComment.questionId }}</a>
             </div>
           </td>
+          <td>
+            <div *ngIf="gradedComment.generated">
+              <fa-icon icon="robot"></fa-icon>
+            </div>
+          </td>
           <td class="text-end">
             <div class="btn-group">
               <button

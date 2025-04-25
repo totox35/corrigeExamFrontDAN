@@ -49,7 +49,7 @@
     "currentstudent": "Copie n° {currentPage} sur {totalPages} copie(s)",
     "noteattribuee": "Note attribuée : ",
     "excellente": "Excellente réponse : ",
-    "badanswer": "Mauvaise réponse remarquable: ",
+    "badanswer": "Mauvaise réponse remarquable : ",
     "pageshift": "Décalage de page(s) : ",
     "add": "Ajouter",
     "remove": "Retirer",
@@ -580,8 +580,9 @@
     "filterallexamsheetsTooltip": "Applique la recherche sur l'ensemble des prédictions des copies (pas seulement sur celles qui semblent au départ proche sémantiquement).",
     "toomuchsimilarResults": "Trop de réponses similaires trouvées",
     "pausePerformPrediction": "PAUSE",
-    "acceptLLM": "Acceptez-vous le classement recommandé ?",
-    "doLLM": "Proposez un classement",
-    "proposeComments": "Propose Comments"
+    "acceptLLM": "Acceptez-vous la correction commentée suggérée ?",
+    "doLLM": "Suggérer une correction commentée",
+    "proposeComments": "Proposer des commentaires",
+    "filtergeneratedcomment": "Cacher les commentaires générés :"
   }
 }

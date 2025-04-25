@@ -576,6 +576,11 @@
     "synchrocommentsTooltip": "Quando esta opção está selecionada, se aplicar um comentário à vista de correção, este comentário é aplicado a todas as respostas semelhantes selecionadas.",
     "filterallexamsheets": "Busca por palavra-chave em todas as provas :",
     "filterallexamsheetsTooltip": "Aplica a pesquisa a todas as estimativas de provas (não apenas àquelas que inicialmente parecem semanticamente próximas).",
-    "toomuchsimilarResults": "Foram encontradas demasiadas respostas semelhantes"
+    "toomuchsimilarResults": "Foram encontradas demasiadas respostas semelhantes",
+    "pausePerformPrediction": "PAUSA",
+    "acceptLLM": "Aceita a correção comentada sugerida?",
+    "doLLM": "Sugerir uma correção comentada",
+    "proposeComments": "Propor comentários",
+    "filtergeneratedcomment": "Ocultar comentários gerados:"
   }
 }

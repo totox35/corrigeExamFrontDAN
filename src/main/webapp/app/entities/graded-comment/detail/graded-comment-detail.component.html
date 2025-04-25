@@ -38,6 +38,10 @@
             <a [routerLink]="['/question', gradedComment.questionId, 'view']">{{ gradedComment.questionId }}</a>
           </div>
         </dd>
+        <dt><span jhiTranslate="gradeScopeIsticApp.gradedComment.generated">Generated</span></dt>
+        <dd>
+          <span> {{ gradedComment.generated }}</span>
+        </dd>
       </dl>
 
       <button type="submit" (click)="previousState()" class="btn btn-info" data-cy="entityDetailsBackButton">

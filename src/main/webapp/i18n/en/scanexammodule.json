@@ -572,7 +572,9 @@
     "filterallexamsheetsTooltip": "Applies the search to all the predicted words (not only to those that initially appear to be semantically similar)",
     "toomuchsimilarResults": "Too many similar answers found",
     "pausePerformPrediction": "PAUSE",
-    "acceptLLM": "Do you accept the recommending grading?",
-    "doLLM": "Proposez a gradong"
+    "acceptLLM": "Do you accept the suggested commented correction?",
+    "doLLM": "Suggest a commented correction",
+    "proposeComments": "Propose Comments",
+    "filtergeneratedcomment": "Hide generated comments:"
   }
 }

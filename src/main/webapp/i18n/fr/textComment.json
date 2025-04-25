@@ -18,11 +18,12 @@
         "title": "Text Comment"
       },
       "id": "ID",
-      "text": "Text",
+      "text": "Texte",
       "description": "Description",
       "zonegeneratedid": "Zonegeneratedid",
       "question": "Question",
-      "studentResponse": "Student Response"
+      "studentResponse": "Réponse de l'étudiant",
+      "generated": "Généré"
     }
   }
 }

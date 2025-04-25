@@ -22,7 +22,8 @@
       "description": "Descrição",
       "zonegeneratedid": "Zonegeneratedid",
       "question": "Questão",
-      "studentResponse": "Resposta ao Estudante"
+      "studentResponse": "Resposta ao Estudante",
+      "generated": "Gerado"
     }
   }
 }

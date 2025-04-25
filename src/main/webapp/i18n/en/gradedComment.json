@@ -23,7 +23,8 @@
       "description": "Description",
       "grade": "Grade",
       "question": "Question",
-      "studentResponse": "Student Response"
+      "studentResponse": "Student Response",
+      "generated": "Generated"
     }
   }
 }

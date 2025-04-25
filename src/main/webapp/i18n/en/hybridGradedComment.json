@@ -24,7 +24,8 @@
       "relative": "Relative",
       "step": "Step",
       "question": "Question",
-      "valueAnswer": "Value Answer"
+      "valueAnswer": "Value Answer",
+      "generated": "Generated"
     }
   }
 }

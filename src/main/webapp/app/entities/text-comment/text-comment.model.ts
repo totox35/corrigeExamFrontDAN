@@ -8,6 +8,7 @@ export interface ITextComment {
   questionId?: number;
   studentResponses?: IStudentResponse[];
   shortcut?: string | string[];
+  generated?: boolean;
 }
 
 export class TextComment implements ITextComment {
@@ -19,6 +20,7 @@ export class TextComment implements ITextComment {
     public questionId?: number,
     public studentResponses?: IStudentResponse[],
     public shortcut?: string | string[],
+    public generated?: boolean,
   ) {}
 }
 

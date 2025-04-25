@@ -208,6 +208,7 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
   shortcutvalue = true;
   showImageQCM = false;
   sortCommentVisible = false;
+  hideGeneratedComments: boolean = false;
 
   //   @ViewChildren('nomImage') canvass2!: QueryList<ElementRef<HTMLCanvasElement>>;
 
@@ -1220,6 +1221,67 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
         this.resp.worststar = false;
       }
       this.updateResponse();
+    }
+  }
+  updateHideGeneratedComments() {
+    if (this.hideGeneratedComments) {
+      // Filter out generated comments
+      this.currentTextComment4Question = this.currentTextComment4Question?.filter(comment => !comment().generated);
+      this.currentGradedComment4Question = this.currentGradedComment4Question?.filter(comment => !comment().generated);
+      this.currentHybridGradedComment4Question = this.currentHybridGradedComment4Question?.filter(comment => !comment().generated);
+    } else {
+      this.loadComments();
+    }
+  }
+
+  async loadComments(): Promise<void> {
+    if (this.questions && this.questions.length > 0) {
+      if (this.questions[0].gradeType === GradeType.DIRECT && this.questions[0].typeAlgoName !== 'QCM') {
+        const com = await firstValueFrom(this.textCommentService.query({ questionId: this.questions[0].id }));
+        this.currentTextComment4Question = [];
+        com.body!.forEach(comment => {
+          this.currentTextComment4Question?.push(signal(comment));
+        });
+        this.currentTextComment4Question.forEach(com1 => {
+          this.active.set(com1().id!, signal(false));
+          if (this.resp && this.resp.textcomments) {
+            const existingComment = this.resp.textcomments.find(tc => tc.id === com1().id);
+            if (existingComment) {
+              (com1() as any).checked = true;
+            }
+          }
+        });
+      } else if (this.questions[0].gradeType === GradeType.HYBRID && this.questions[0].typeAlgoName !== 'QCM') {
+        const com = await firstValueFrom(this.hybridGradedCommentService.query({ questionId: this.questions[0].id }));
+        this.currentHybridGradedComment4Question = [];
+        com.body!.forEach(comment => {
+          this.currentHybridGradedComment4Question?.push(signal(comment));
+        });
+        this.currentHybridGradedComment4Question.forEach(com1 => {
+          this.active.set(com1().id!, signal(false));
+          if (this.resp && this.resp.gradedcomments) {
+            const existingComment = this.resp.gradedcomments.find(gc => gc.id === com1().id);
+            if (existingComment) {
+              (com1() as any).checked = true;
+            }
+          }
+        });
+      } else {
+        const com = await firstValueFrom(this.gradedCommentService.query({ questionId: this.questions[0].id }));
+        this.currentGradedComment4Question = [];
+        com.body!.forEach(comment => {
+          this.currentGradedComment4Question?.push(signal(comment));
+        });
+        this.currentGradedComment4Question.forEach(com1 => {
+          this.active.set(com1().id!, signal(false));
+          if (this.resp && this.resp.gradedcomments) {
+            const existingComment = this.resp.gradedcomments.find(gc => gc.id === com1().id);
+            if (existingComment) {
+              (com1() as any).checked = true;
+            }
+          }
+        });
+      }
     }
   }
 
@@ -3606,7 +3668,7 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
   createdGCommentsLength: number = 0;
 
   async doLLM() {
-    if (this.questions![0].gradeType == GradeType.DIRECT) {
+    if (this.questions![0].gradeType === GradeType.DIRECT) {
       this.doLLM4TextComments();
     } else {
       this.doLLM4GradedComments();
@@ -3636,7 +3698,7 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
         console.log('LLM response:', fullText);
         const lines = fullText.split('\n');
         let grade = 'N/A';
-        let comments = [];
+        const comments = [];
 
         let currentTitle = '';
         let currentComment = '';
@@ -3803,6 +3865,7 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
               this.closeEditComment(currentComment);
 
               (currentComment as any).checked = true;
+              currentComment.generated = true;
 
               this.currentTextComment4Question?.push(signal(currentComment));
             }),
@@ -3865,6 +3928,7 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
               this.closeEditComment(currentComment);
 
               (currentComment as any).checked = true;
+              currentComment.generated = true;
               this.currentGradedComment4Question?.push(signal(currentComment));
             }),
           );
@@ -3899,10 +3963,15 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
         questionId: this.currentQuestion!.id,
         description: comment.content,
         text: comment.title,
+        generated: true,
       };
 
       const existingComment = existingComments.find(
-        ec => ec.text === newComment.text && ec.description === newComment.description && ec.questionId === this.currentQuestion!.id,
+        ec =>
+          ec.text === newComment.text &&
+          ec.description === newComment.description &&
+          ec.questionId === this.currentQuestion!.id &&
+          ec.generated === newComment.generated,
       );
 
       if (existingComment) {
@@ -3929,10 +3998,15 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
         description: comment.content,
         text: comment.title,
         grade: comment.grade,
+        generated: true,
       };
 
       const existingComment = existingComments.find(
-        ec => ec.text === newComment.text && ec.description === newComment.description && ec.questionId === this.currentQuestion!.id,
+        ec =>
+          ec.text === newComment.text &&
+          ec.description === newComment.description &&
+          ec.questionId === this.currentQuestion!.id &&
+          ec.generated === newComment.generated,
       );
 
       if (existingComment) {
@@ -4032,7 +4106,7 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
         const predictionTexts = await lastValueFrom(
           this.predictionService.query({ questionId: qId }).pipe(map(response => response.body?.map(pred => pred.text) || [])),
         );
-        if (q?.gradeType == GradeType.DIRECT) {
+        if (q?.gradeType === GradeType.DIRECT) {
           this.proposeTComments(qId, result.value);
         } else {
           this.proposeGComments(qId, result.value, q?.gradeType!, q!.step!, q!.point!);
@@ -4058,7 +4132,7 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
         console.log(response);
         const fullText = response.response;
         const lines = fullText.split('\n');
-        let comments = [];
+        const comments = [];
 
         let currentTitle = '';
         let currentComment = '';
@@ -4136,7 +4210,7 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
         console.log(response);
         const fullText = response.response;
         const lines = fullText.split('\n');
-        let comments = [];
+        const comments = [];
 
         let currentTitle = '';
         let currentComment = '';
@@ -4159,8 +4233,8 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
             const raw = line.replace(/^Note du commentaire\s*\d+\s*:/, '').trim();
             const parts = raw.split('/');
             const cleaned = parts[0].replace(',', '.').replace(/^[-−]/, '');
-            let parsedGrade = parseFloat(cleaned);
-            let stepGrade = Math.round(parsedGrade / step);
+            const parsedGrade = parseFloat(cleaned);
+            const stepGrade = Math.round(parsedGrade / step);
             commentGrade = stepGrade;
           }
         }
