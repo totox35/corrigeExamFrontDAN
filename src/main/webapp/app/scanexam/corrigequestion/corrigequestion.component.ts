@@ -3672,17 +3672,27 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
   createdGCommentsLength: number = 0;
 
   async doLLM() {
-    this.getQuestionText();
-    if (this.questions![0].gradeType === GradeType.DIRECT) {
-      this.doLLM4TextComments();
+    const nbStudents = this.numberPagesInScan! / this.nbreFeuilleParCopie!;
+    if (this.allpredictions.length !== nbStudents) {
+      // Show popup/alert
+      this.confirmationService.confirm({
+        message: this.translateService.instant('scanexam.noPredictionDoAnalyseOCR'),
+        accept: () => {
+          this.performPrediction4Question();
+        },
+        reject: () => {},
+      });
     } else {
-      this.doLLM4GradedComments();
+      if (this.questions![0].gradeType === GradeType.DIRECT) {
+        this.doLLM4TextComments();
+      } else {
+        this.doLLM4GradedComments();
+      }
     }
   }
 
-  doLLM4TextComments() {
-    const question_text =
-      'Expliquez la différence entre une variable dépendante et une variable indépendante dans une expérience scientifique.';
+  async doLLM4TextComments() {
+    const question_text = await this.getQuestionText();
 
     const existingComments: ITextComment[] = this.currentTextComment4Question
       ? this.currentTextComment4Question.map(signal => signal()) // Unwrap each Signal
@@ -3691,8 +3701,7 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
     this.responsegroupService
       .gradeAnswerTComment({
         question: question_text,
-        student_answer:
-          'La variable dépendante est celle que l’on change, tandis que la variable indépendante est ce que l’on mesure à la fin de l’expérience.',
+        student_answer: this.currentPrediction?.text!,
         max_grade: this.maximumNote,
         step: this.noteStep,
         existing_comments: existingComments,
@@ -3749,15 +3758,14 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
       });
   }
 
-  doLLM4GradedComments() {
+  async doLLM4GradedComments() {
     let grade_type = '';
     if (this.questions![0].gradeType === GradeType.NEGATIVE) {
       grade_type = 'negative';
     } else {
       grade_type = 'positif';
     }
-    const question_text =
-      'Expliquez la différence entre une variable dépendante et une variable indépendante dans une expérience scientifique.';
+    const question_text = await this.getQuestionText();
 
     const existingComments: IGradedComment[] = this.currentGradedComment4Question
       ? this.currentGradedComment4Question.map(signal => signal()) // Unwrap each Signal
@@ -3766,8 +3774,7 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
     this.responsegroupService
       .gradeAnswerGComment({
         question: question_text,
-        student_answer:
-          'La variable dépendante est celle que l’on change, tandis que la variable indépendante est ce que l’on mesure à la fin de l’expérience.',
+        student_answer: this.currentPrediction?.text!,
         max_grade: this.maximumNote,
         step: this.noteStep,
         existing_comments: existingComments,
@@ -4106,26 +4113,19 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
   async getQuestionText() {
     const q = (await firstValueFrom(this.questionService.find(this.questionId!))).body;
     console.log('Question:', q!);
-    // Get the title zone
     const titleZone = await firstValueFrom(this.zoneService.find(q!.titleZoneId!));
     const z = titleZone.body;
 
-    // Calculate page number
     const pagewithoffset = this.currentStudent! * this.nbreFeuilleParCopie! + z!.pageNumber! + this.pageOffset;
     const pagewithoutoffset = this.currentStudent! * this.nbreFeuilleParCopie! + z!.pageNumber!;
     let page = pagewithoutoffset;
     if (pagewithoffset > 0 && pagewithoffset <= this.numberPagesInScan!) {
       page = pagewithoffset;
     }
-
-    // Get the image
     const imagezone = await this.getAllImage4Zone(page, z!, true);
-
-    // Use the ImageData directly from imagezone.i
     const coupageResponse = await firstValueFrom(this.coupageDimageService.runScript(imagezone.i));
     let question_text = ' ';
 
-    // Process each refined line
     if (coupageResponse.linesbase64) {
       for (const { index, value } of coupageResponse.linesbase64.map((value1: any, index1: number) => ({
         index: index1,
@@ -4134,7 +4134,6 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
         const imgData = new ImageData(new Uint8ClampedArray(value), coupageResponse.widths[index], coupageResponse.heights[index]);
 
         const lineResult = await this.mlt.executeMLTFromImagData(imgData, coupageResponse.widths[index], coupageResponse.heights[index]);
-
         if (lineResult) {
           question_text += lineResult + '\n';
         }
@@ -4146,33 +4145,46 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
   }
 
   proposeComments(): void {
-    const qId = this.questionId!;
-    this.getCommentNumber('Please enter number of comments you want:').then(async result => {
-      if (result.confirmed && result.value !== null) {
-        const q = (await firstValueFrom(this.questionService.find(qId))).body;
-        const predictionTexts = await lastValueFrom(
-          this.predictionService.query({ questionId: qId }).pipe(map(response => response.body?.map(pred => pred.text) || [])),
-        );
-        if (q?.gradeType === GradeType.DIRECT) {
-          this.proposeTComments(qId, result.value);
-        } else {
-          this.proposeGComments(qId, result.value, q?.gradeType!, q!.step!, q!.point!);
+    const nbStudents = this.numberPagesInScan! / this.nbreFeuilleParCopie!;
+    if (this.allpredictions.length !== nbStudents) {
+      // Show popup/alert
+      this.confirmationService.confirm({
+        message: this.translateService.instant('scanexam.noPredictionDoAnalyseOCR'),
+        accept: () => {
+          this.performPrediction4Question();
+        },
+        reject: () => {},
+      });
+    } else {
+      const qId = this.questionId!;
+      this.getCommentNumber('Please enter number of comments you want:').then(async result => {
+        if (result.confirmed && result.value !== null) {
+          const q = (await firstValueFrom(this.questionService.find(qId))).body;
+          const predictionTexts = await lastValueFrom(
+            this.predictionService
+              .query({ questionId: qId })
+              .pipe(
+                map(response =>
+                  (response.body?.map(pred => pred.text) || []).filter((text): text is string => text !== null && text !== undefined),
+                ),
+              ),
+          );
+          if (q?.gradeType === GradeType.DIRECT) {
+            this.proposeTComments(qId, result.value, predictionTexts);
+          } else {
+            this.proposeGComments(qId, result.value, q?.gradeType!, q!.step!, q!.point!, predictionTexts);
+          }
         }
-      }
-    });
+      });
+    }
   }
 
-  proposeTComments(qId: number, nbComments: number) {
+  async proposeTComments(qId: number, nbComments: number, predictionTexts: string[]) {
+    const question_text = await this.getQuestionText();
     this.responsegroupService
       .proposeTComments({
-        question: 'Expliquez la différence entre une variable dépendante et une variable indépendante dans une expérience scientifique.',
-        student_answers: [
-          'La variable dépendante est celle que l’on modifie.',
-          ' La variable indépendante dépend du résultat.',
-          'La variable dépendante est ce que l’on mesure à la fin.',
-          ' Je pense que la variable indépendante est le facteur que l’on contrôle.',
-          'La variable indépendante est influencée par les changements de la variable dépendante.',
-        ],
+        question: question_text,
+        student_answers: predictionTexts,
         nb_comments: nbComments,
       })
       .subscribe(async response => {
@@ -4217,15 +4229,15 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
         //   }
         // ];
 
-        const creationPromises = comments.map(comment => {
+        const creationPromises = comments.map(async comment => {
           const newComment: ITextComment = {
             questionId: qId,
             text: comment.title,
             description: comment.content,
             // studentResponses will be empty by default
           };
-
-          return firstValueFrom(this.textCommentService.create(newComment));
+          const createdComment = (await firstValueFrom(this.textCommentService.create(newComment))).body;
+          this.currentTextComment4Question!.push(signal(createdComment!));
         });
 
         try {
@@ -4237,7 +4249,8 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
       });
   }
 
-  proposeGComments(qId: number, nbComments: number, type: string, step: number, max_grade: number) {
+  async proposeGComments(qId: number, nbComments: number, type: string, step: number, max_grade: number, predictionTexts: string[]) {
+    const question_text = await this.getQuestionText();
     let grade_type = '';
     if (type === GradeType.NEGATIVE) {
       grade_type = 'negative';
@@ -4246,8 +4259,8 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
     }
     this.responsegroupService
       .proposeGComments({
-        question: 'Expliquez la différence entre une variable dépendante et une variable indépendante dans une expérience scientifique.',
-        student_answers: ['Il doivent respirer et boire du leau et manger pour survivre.', 'Je ne sais pas'],
+        question: question_text,
+        student_answers: predictionTexts,
         nb_comments: nbComments,
         grade_type: grade_type,
         step: step,
@@ -4292,15 +4305,15 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
         }
 
         console.log('Graded comments:', comments);
-        const creationPromises = comments.map(comment => {
+        const creationPromises = comments.map(async comment => {
           const newComment: IGradedComment = {
             questionId: qId,
             text: comment.title,
             description: comment.content,
             grade: comment.grade,
           };
-
-          return firstValueFrom(this.gradedCommentService.create(newComment));
+          const createdComment = (await firstValueFrom(this.gradedCommentService.create(newComment))).body;
+          this.currentTextComment4Question!.push(signal(createdComment!));
         });
 
         try {
