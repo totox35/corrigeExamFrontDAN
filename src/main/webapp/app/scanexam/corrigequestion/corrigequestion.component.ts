@@ -1871,6 +1871,11 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
     this.searchControl.reset();
     this.searchedTerm = '';
     if (!this.init) {
+      //Closing LLM suggestion
+      if (this.LLMcolorShow == true) {
+        this.rejectLLMButton();
+      }
+
       this.cleanCanvassCache();
       const m = this.preferenceService.getRandomOrderForExam(+this.examId!);
       if (m.size === 0) {
@@ -1897,6 +1902,11 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
     this.searchControl.reset();
     this.searchedTerm = '';
     if (!this.init) {
+      //Closing LLM suggestion
+      if (this.LLMcolorShow == true) {
+        this.rejectLLMButton();
+      }
+
       this.cleanCanvassCache();
 
       this.questionindex = $event.page;
