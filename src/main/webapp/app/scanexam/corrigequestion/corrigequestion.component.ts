@@ -3827,6 +3827,7 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
   existingComments: any;
   note: any;
   old_note: any;
+  old_resp: any;
   acceptLLMButton() {
     if (this.questions![0].gradeType === GradeType.DIRECT) {
       if (this.createdTCommentsLength > 0) {
@@ -3853,6 +3854,9 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
     }
     this.currentNote = Number(this.old_note);
     this.LLMcolorShow = false;
+    if (this.old_resp.id == undefined) {
+      this.removeAnswer();
+    }
   }
 
   async acceptLLMGradingTComments(grade: string, existingComments: ITextComment[]) {
@@ -3980,7 +3984,11 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
     }
   }
 
-  showLLMGradeTComments(grade: string, comments: { title: string; content: string }[], existingComments: ITextComment[]) {
+  async showLLMGradeTComments(grade: string, comments: { title: string; content: string }[], existingComments: ITextComment[]) {
+    this.old_resp = this.resp;
+    const updated = await firstValueFrom(this.updateResponseRequest(this.resp!));
+    this.resp = updated.body!;
+
     this.LLMTComments = [];
     this.createdTCommentsLength = 0;
     this.LLMcolorShow = true;
@@ -4010,7 +4018,15 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
     return old_note;
   }
 
-  showLLMGradeGComments(grade: string, comments: { title: string; content: string; grade: number }[], existingComments: IGradedComment[]) {
+  async showLLMGradeGComments(
+    grade: string,
+    comments: { title: string; content: string; grade: number }[],
+    existingComments: IGradedComment[],
+  ) {
+    this.old_resp = this.resp;
+    const updated = await firstValueFrom(this.updateResponseRequest(this.resp!));
+    this.resp = updated.body!;
+
     this.LLMGComments = [];
     this.createdGCommentsLength = 0;
     this.LLMcolorShow = true;
@@ -4039,83 +4055,6 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
       }
     });
     return old_note;
-  }
-
-  customConfirm(message: string): Promise<boolean> {
-    return new Promise(resolve => {
-      // Create dialog container without a blocking overlay
-      const dialog = document.createElement('div');
-      Object.assign(dialog.style, {
-        position: 'fixed',
-        top: '50%',
-        left: '50%',
-        transform: 'translate(-50%, -50%)',
-        backgroundColor: 'white',
-        padding: '24px',
-        border: '2px solid #000',
-        borderRadius: '8px',
-        boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)',
-        maxWidth: '80%',
-        width: '300px',
-        textAlign: 'center',
-        zIndex: '9999',
-      });
-
-      // Message element
-      const messageEl = document.createElement('p');
-      Object.assign(messageEl.style, {
-        marginBottom: '20px',
-        fontSize: '16px',
-        wordWrap: 'break-word',
-      });
-      messageEl.textContent = message;
-
-      // Buttons container
-      const buttons = document.createElement('div');
-      buttons.style.marginTop = '20px';
-
-      // OK Button
-      const okButton = document.createElement('button');
-      Object.assign(okButton.style, {
-        marginRight: '10px',
-        padding: '8px 16px',
-        backgroundColor: '#c70707',
-        color: 'white',
-        border: 'none',
-        borderRadius: '4px',
-        cursor: 'pointer',
-      });
-      okButton.textContent = 'OK';
-      okButton.id = 'confirm-ok';
-
-      // Cancel Button
-      const cancelButton = document.createElement('button');
-      Object.assign(cancelButton.style, {
-        padding: '8px 16px',
-        backgroundColor: 'white',
-        border: '1px solid #000',
-        borderRadius: '4px',
-        cursor: 'pointer',
-      });
-      cancelButton.textContent = 'Cancel';
-      cancelButton.id = 'confirm-cancel';
-
-      // Assemble elements
-      buttons.append(okButton, cancelButton);
-      dialog.append(messageEl, buttons);
-      document.body.appendChild(dialog);
-
-      // Event listeners
-      okButton.addEventListener('click', () => {
-        document.body.removeChild(dialog);
-        resolve(true);
-      });
-
-      cancelButton.addEventListener('click', () => {
-        document.body.removeChild(dialog);
-        resolve(false);
-      });
-    });
   }
 
   // LLM for comment proposition
