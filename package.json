@@ -39,7 +39,9 @@
     "webapp:dev-verbose": "ng serve --verbose",
     "webapp:prod": "npm run clean-www && npm run webapp:build:prod",
     "webapp:test": "npm run test --",
-    "cy:run": "cypress run"
+    "cy:run": "cypress run",
+    "start:llama": "cd ../corrigeExamBackDAN/src/main/LLama && uvicorn run_LLama:app --reload",
+    "start:all": "concurrently \"npm run start\" \"npm run start:llama\""
   },
   "config": {
     "default_environment": "prod"
@@ -68,6 +70,7 @@
     "@ngx-translate/core": "15.0.0",
     "@ngx-translate/http-loader": "^8.0.0",
     "@popperjs/core": "2.11.8",
+    "@primeng/themes": "18.0.2",
     "@supercharge/promise-pool": "^3.2.0",
     "@svgdotjs/svg.js": "3.2.4",
     "@tensorflow/tfjs": "^4.22.0",
@@ -102,7 +105,6 @@
     "primeflex": "3.3.1",
     "primeicons": "7.0.0",
     "primeng": "18.0.2",
-    "@primeng/themes": "18.0.2",
     "rxjs": "7.8.1",
     "sonar-scanner": "3.1.0",
     "swagger-ui-dist": "5.17.14",
@@ -132,7 +134,7 @@
     "@typescript-eslint/eslint-plugin": "8.9.0",
     "@typescript-eslint/parser": "8.9.0",
     "angular-cli-ghpages": "2.0.1",
-    "concurrently": "9.0.1",
+    "concurrently": "^9.0.1",
     "copy-webpack-plugin": "12.0.2",
     "cypress": "^13.15.0",
     "esbuild-loader": "^4.2.2",
