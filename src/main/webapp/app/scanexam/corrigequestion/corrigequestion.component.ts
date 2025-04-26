@@ -3694,7 +3694,7 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
   async doLLM4TextComments() {
     const question_text = await this.getQuestionText();
 
-    const existingComments: ITextComment[] = this.currentTextComment4Question
+    this.existingComments = this.currentTextComment4Question
       ? this.currentTextComment4Question.map(signal => signal()) // Unwrap each Signal
       : [];
 
@@ -3704,14 +3704,14 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
         student_answer: this.currentPrediction?.text!,
         max_grade: this.maximumNote,
         step: this.noteStep,
-        existing_comments: existingComments,
+        existing_comments: this.existingComments,
       })
       .subscribe(async response => {
         console.log(response);
         const fullText = response.response;
         console.log('LLM response:', fullText);
         const lines = fullText.split('\n');
-        let grade = 'N/A';
+        this.note = 'N/A';
         const comments = [];
 
         let currentTitle = '';
@@ -3722,8 +3722,8 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
           const line = lines[i].trim();
 
           if (line.startsWith('Note:') || line.startsWith('Note :')) {
-            grade = line.replace(/Note\s*:/, '').trim();
-            grade = grade.split('/')[0].trim();
+            this.note = line.replace(/Note\s*:/, '').trim();
+            this.note = this.note.split('/')[0].trim();
           } else if (line.match(/^Titre (du|de) [Cc]ommentaire \d+\s*:/)) {
             // Si on était déjà en train de traiter un commentaire, on l'ajoute
             if (currentTitle && currentComment) {
@@ -3742,19 +3742,7 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
         if (currentTitle && currentComment) {
           comments.push({ title: currentTitle, content: currentComment });
         }
-        const old_note = this.showLLMGradeTComments(grade, comments, existingComments);
-
-        const confirmed = await this.customConfirm(this.translateService.instant('scanexam.acceptLLM'));
-        if (this.createdTCommentsLength > 0) {
-          this.currentTextComment4Question!.splice(-this.createdTCommentsLength);
-        }
-
-        if (confirmed) {
-          this.acceptLLMGradingTComments(grade, existingComments);
-        } else {
-          this.currentNote = Number(old_note);
-          this.LLMcolorShow = false;
-        }
+        this.old_note = this.showLLMGradeTComments(this.note, comments, this.existingComments);
       });
   }
 
@@ -3767,7 +3755,7 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
     }
     const question_text = await this.getQuestionText();
 
-    const existingComments: IGradedComment[] = this.currentGradedComment4Question
+    this.existingComments = this.currentGradedComment4Question
       ? this.currentGradedComment4Question.map(signal => signal()) // Unwrap each Signal
       : [];
 
@@ -3777,7 +3765,7 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
         student_answer: this.currentPrediction?.text!,
         max_grade: this.maximumNote,
         step: this.noteStep,
-        existing_comments: existingComments,
+        existing_comments: this.existingComments,
         grade_type: grade_type,
       })
       .subscribe(async response => {
@@ -3785,7 +3773,7 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
         const fullText = response.response;
         console.log('LLM response:', fullText);
         const lines = fullText.split('\n');
-        const grade = 'N/A';
+        this.note = 'N/A';
         const comments = [];
 
         let currentTitle = '';
@@ -3822,20 +3810,39 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
           comments.push({ title: currentTitle, content: currentComment, grade: commentGrade });
         }
 
-        const old_note = this.showLLMGradeGComments(grade, comments, existingComments);
-
-        const confirmed = await this.customConfirm(this.translateService.instant('scanexam.acceptLLM'));
-        if (this.createdGCommentsLength > 0) {
-          this.currentGradedComment4Question!.splice(-this.createdGCommentsLength);
-        }
-
-        if (confirmed) {
-          this.acceptLLMGradingGComments(grade, existingComments);
-        } else {
-          this.currentNote = Number(old_note);
-          this.LLMcolorShow = false;
-        }
+        this.old_note = this.showLLMGradeGComments(this.note, comments, this.existingComments);
       });
+  }
+
+  existingComments: any;
+  note: any;
+  old_note: any;
+  acceptLLMButton() {
+    if (this.questions![0].gradeType === GradeType.DIRECT) {
+      if (this.createdTCommentsLength > 0) {
+        this.currentTextComment4Question!.splice(-this.createdTCommentsLength);
+      }
+      this.acceptLLMGradingTComments(this.note, this.existingComments);
+    } else {
+      if (this.createdGCommentsLength > 0) {
+        this.currentGradedComment4Question!.splice(-this.createdGCommentsLength);
+      }
+      this.acceptLLMGradingGComments(this.note, this.existingComments);
+    }
+  }
+
+  rejectLLMButton() {
+    if (this.questions![0].gradeType === GradeType.DIRECT) {
+      if (this.createdTCommentsLength > 0) {
+        this.currentTextComment4Question!.splice(-this.createdTCommentsLength);
+      }
+    } else {
+      if (this.createdGCommentsLength > 0) {
+        this.currentGradedComment4Question!.splice(-this.createdGCommentsLength);
+      }
+    }
+    this.currentNote = Number(this.old_note);
+    this.LLMcolorShow = false;
   }
 
   async acceptLLMGradingTComments(grade: string, existingComments: ITextComment[]) {
@@ -3978,11 +3985,7 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
       };
 
       const existingComment = existingComments.find(
-        ec =>
-          ec.text === newComment.text &&
-          ec.description === newComment.description &&
-          ec.questionId === this.currentQuestion!.id &&
-          ec.generated === newComment.generated,
+        ec => ec.text === newComment.text && ec.description === newComment.description && ec.questionId === this.currentQuestion!.id,
       );
 
       if (existingComment) {
@@ -4013,11 +4016,7 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
       };
 
       const existingComment = existingComments.find(
-        ec =>
-          ec.text === newComment.text &&
-          ec.description === newComment.description &&
-          ec.questionId === this.currentQuestion!.id &&
-          ec.generated === newComment.generated,
+        ec => ec.text === newComment.text && ec.description === newComment.description && ec.questionId === this.currentQuestion!.id,
       );
 
       if (existingComment) {
@@ -4234,7 +4233,7 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
             questionId: qId,
             text: comment.title,
             description: comment.content,
-            // studentResponses will be empty by default
+            generated: true,
           };
           const createdComment = (await firstValueFrom(this.textCommentService.create(newComment))).body;
           this.currentTextComment4Question!.push(signal(createdComment!));
@@ -4311,6 +4310,7 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
             text: comment.title,
             description: comment.content,
             grade: comment.grade,
+            generated: true,
           };
           const createdComment = (await firstValueFrom(this.gradedCommentService.create(newComment))).body;
           this.currentTextComment4Question!.push(signal(createdComment!));

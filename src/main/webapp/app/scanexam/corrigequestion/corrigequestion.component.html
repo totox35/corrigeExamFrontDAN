@@ -1881,12 +1881,35 @@
         <button
           class="sm:text-xs md:text-xs lg:text-base"
           styleClass="md:text-xs sm:p-button-sm md:p-button-sm lg:p-button"
-          *ngIf="this.currentQuestion?.typeAlgoName === 'manuscrit'"
+          *ngIf="this.currentQuestion?.typeAlgoName === 'manuscrit' && LLMcolorShow == false"
           pButton
           (click)="doLLM()"
           [pTooltip]="'scanexam.doLLM' | translate"
           [tooltipZIndex]="'3000'"
           [label]="'scanexam.doLLM' | translate"
+          [disabled]="blocked"
+        ></button>
+        <button
+          class="sm:text-xs md:text-xs lg:text-base"
+          styleClass="md:text-xs sm:p-button-sm md:p-button-sm lg:p-button"
+          *ngIf="this.currentQuestion?.typeAlgoName === 'manuscrit' && LLMcolorShow == true"
+          pButton
+          icon="pi pi-thumbs-up"
+          (click)="acceptLLMButton()"
+          pTooltip="Accept"
+          [tooltipZIndex]="'3000'"
+          [disabled]="blocked"
+        ></button>
+
+        <button
+          class="sm:text-xs md:text-xs lg:text-base"
+          styleClass="md:text-xs sm:p-button-sm md:p-button-sm lg:p-button"
+          *ngIf="this.currentQuestion?.typeAlgoName === 'manuscrit' && LLMcolorShow == true"
+          pButton
+          icon="pi pi-thumbs-down"
+          (click)="rejectLLMButton()"
+          pTooltip="Reject"
+          [tooltipZIndex]="'3000'"
           [disabled]="blocked"
         ></button>
       </div>
