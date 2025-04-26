@@ -4129,6 +4129,7 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
 
   async proposeTComments(qId: number, nbComments: number, predictionTexts: string[]) {
     const question_text = await this.getQuestionText();
+    console.log('Nb comments:', nbComments);
     this.responsegroupService
       .proposeTComments({
         question: question_text,
@@ -4328,6 +4329,7 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
       });
       input.type = 'number';
       input.min = '1';
+      input.value = '1';
       input.autofocus = true;
 
       // Buttons container
