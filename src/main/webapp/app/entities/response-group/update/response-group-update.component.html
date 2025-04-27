@@ -1,1 +1,68 @@
-<p>update works!</p>
+<!-- response-group-update.component.html -->
+<div class="d-flex justify-content-center">
+  <div class="col-8">
+    <form name="editForm" role="form" novalidate (ngSubmit)="save()" [formGroup]="editForm">
+      <h2
+        id="jhi-response-group-heading"
+        data-cy="ResponseGroupCreateUpdateHeading"
+        jhiTranslate="gradeScopeIsticApp.responseGroup.home.createOrEditLabel"
+      >
+        Create or edit a Response Group
+      </h2>
+      <div>
+        <jhi-alert-error></jhi-alert-error>
+        <div class="row mb-3" [hidden]="editForm.get('id')!.value == null">
+          <label class="form-label" jhiTranslate="gradeScopeIsticApp.responseGroup.id" for="field_id">ID</label>
+          <input
+            type="number"
+            (mouseup)="$event.stopPropagation()"
+            class="form-control"
+            name="id"
+            id="field_id"
+            data-cy="id"
+            formControlName="id"
+            [readonly]="true"
+          />
+        </div>
+        <div class="row mb-3">
+          <label class="form-label" jhiTranslate="gradeScopeIsticApp.responseGroup.questionId" for="field_questionId">Question ID</label>
+          <select class="form-control" id="field_questionId" name="questionId" formControlName="questionId">
+            <option [ngValue]="null"></option>
+            <option [ngValue]="questionOption.id" *ngFor="let questionOption of questions; trackBy: trackById">
+              {{ questionOption.id }}
+            </option>
+          </select>
+        </div>
+        <div class="row mb-3">
+          <label class="form-label" jhiTranslate="gradeScopeIsticApp.responseGroup.predictionIds" for="field_predictionIds"
+            >Prediction IDs</label
+          >
+          <input
+            type="text"
+            class="form-control"
+            name="predictionIds"
+            id="field_predictionIds"
+            data-cy="predictionIds"
+            formControlName="predictionIds"
+            placeholder="e.g. 1, 2, 3"
+          />
+          <small class="form-text text-muted">Enter prediction IDs separated by commas</small>
+        </div>
+      </div>
+      <div>
+        <button type="button" id="cancel-save" data-cy="entityCreateCancelButton" class="btn btn-secondary" (click)="previousState()">
+          <fa-icon icon="ban"></fa-icon>&nbsp;<span jhiTranslate="entity.action.cancel">Cancel</span>
+        </button>
+        <button
+          type="submit"
+          id="save-entity"
+          data-cy="entityCreateSaveButton"
+          [disabled]="editForm.invalid || isSaving"
+          class="btn btn-primary"
+        >
+          <fa-icon icon="save"></fa-icon>&nbsp;<span jhiTranslate="entity.action.save">Save</span>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>

@@ -1,0 +1,26 @@
+{
+  "gradeScopeIsticApp": {
+    "responseGroup": {
+      "home": {
+        "title": "Grupos de Respostas",
+        "refreshListLabel": "Atualizar lista",
+        "createLabel": "Criar novo Grupo de Respostas",
+        "createOrEditLabel": "Criar ou editar Grupo de Respostas",
+        "notFound": "Nenhum Grupo de Respostas encontrado"
+      },
+      "created": "Um novo Grupo de Respostas foi criado com o identificador {{ param }}",
+      "updated": "Um Grupo de Respostas foi atualizado com o identificador {{ param }}",
+      "deleted": "Um Grupo de Respostas foi excluído com o identificador {{ param }}",
+      "delete": {
+        "question": "Tem certeza de que deseja excluir o Grupo de Respostas {{ id }}?"
+      },
+      "detail": {
+        "title": "Grupo de Respostas"
+      },
+      "id": "ID",
+      "questionId": "ID da Questão",
+      "predictionIds": "IDs de Predições",
+      "averageEmbedding": "Embedding Médio"
+    }
+  }
+}

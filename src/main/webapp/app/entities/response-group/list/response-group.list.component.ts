@@ -5,12 +5,14 @@ import { NgIf, NgFor } from '@angular/common';
 import { forkJoin, firstValueFrom } from 'rxjs';
 import { TranslateDirective } from 'app/shared/language/translate.directive';
 import { ResponseGroupService } from '../service/response-group.service.component';
+import { RouterModule } from '@angular/router';
+import { FaIconComponent } from '@fortawesome/angular-fontawesome';
 
 @Component({
   selector: 'app-response-group-list',
   templateUrl: './response-group.list.component.html',
   standalone: true,
-  imports: [TranslateDirective, NgFor, NgIf],
+  imports: [TranslateDirective, NgFor, NgIf, RouterModule, FaIconComponent],
 })
 export class ResponseGroupListComponent implements OnInit {
   responseGroups: IResponseGroup[] = []; // Array to store response groups

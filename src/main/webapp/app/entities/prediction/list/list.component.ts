@@ -6,12 +6,13 @@ import { NgIf, NgFor } from '@angular/common';
 import { forkJoin, firstValueFrom } from 'rxjs';
 import { TranslateDirective } from 'app/shared/language/translate.directive';
 import { RouterModule } from '@angular/router';
+import { FaIconComponent } from '@fortawesome/angular-fontawesome';
 
 @Component({
   selector: 'app-prediction-list',
   templateUrl: './list.component.html',
   standalone: true,
-  imports: [TranslateDirective, NgFor, NgIf, RouterModule],
+  imports: [TranslateDirective, NgFor, NgIf, RouterModule, FaIconComponent],
 })
 export class PredictionListComponent implements OnInit {
   predictions: IPrediction[] = []; // Array to store predictions

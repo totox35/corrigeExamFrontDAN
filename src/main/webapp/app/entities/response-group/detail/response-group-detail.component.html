@@ -1,1 +1,38 @@
-<p>detail works!</p>
+<div class="d-flex justify-content-center">
+  <div class="col-8">
+    <div *ngIf="responseGroup">
+      <h2 data-cy="responseGroupDetailsHeading">
+        <span jhiTranslate="gradeScopeIsticApp.responseGroup.detail.title">Groupe de Réponses</span>
+      </h2>
+      <hr />
+      <jhi-alert-error></jhi-alert-error>
+      <jhi-alert></jhi-alert>
+      <dl class="row-md jh-entity-details">
+        <dt><span jhiTranslate="gradeScopeIsticApp.responseGroup.id">ID</span></dt>
+        <dd>
+          <span>{{ responseGroup.id }}</span>
+        </dd>
+        <dt><span jhiTranslate="gradeScopeIsticApp.responseGroup.questionId">ID de Question</span></dt>
+        <dd>
+          <div *ngIf="responseGroup.questionId">
+            <a [routerLink]="['/question', responseGroup.questionId, 'view']">{{ responseGroup.questionId }}</a>
+          </div>
+        </dd>
+        <dt><span jhiTranslate="gradeScopeIsticApp.responseGroup.predictionIds">IDs de Prédictions</span></dt>
+        <dd>
+          <span>{{ responseGroup.predictionIds?.join(', ') }}</span>
+        </dd>
+        <dt><span jhiTranslate="gradeScopeIsticApp.responseGroup.averageEmbedding">Embedding Moyen</span></dt>
+        <dd>
+          <span>{{ displayEmbedding(responseGroup.averageEmbedding) }}</span>
+        </dd>
+      </dl>
+      <button type="submit" (click)="previousState()" class="btn btn-info" data-cy="entityDetailsBackButton">
+        <fa-icon icon="arrow-left"></fa-icon>&nbsp;<span jhiTranslate="entity.action.back">Retour</span>
+      </button>
+      <button type="button" [routerLink]="['/response-group', responseGroup.id, 'edit']" class="btn btn-primary">
+        <fa-icon icon="pencil-alt"></fa-icon>&nbsp;<span jhiTranslate="entity.action.edit">Éditer</span>
+      </button>
+    </div>
+  </div>
+</div>

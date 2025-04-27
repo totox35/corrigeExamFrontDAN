@@ -1,0 +1,26 @@
+{
+  "gradeScopeIsticApp": {
+    "responseGroup": {
+      "home": {
+        "title": "Response Groups",
+        "refreshListLabel": "Refresh list",
+        "createLabel": "Create a new Response Group",
+        "createOrEditLabel": "Create or edit a Response Group",
+        "notFound": "No Response Groups found"
+      },
+      "created": "A new Response Group is created with identifier {{ param }}",
+      "updated": "A Response Group is updated with identifier {{ param }}",
+      "deleted": "A Response Group is deleted with identifier {{ param }}",
+      "delete": {
+        "question": "Are you sure you want to delete Response Group {{ id }}?"
+      },
+      "detail": {
+        "title": "Response Group"
+      },
+      "id": "ID",
+      "questionId": "Question ID",
+      "predictionIds": "Prediction IDs",
+      "averageEmbedding": "Average Embedding"
+    }
+  }
+}
