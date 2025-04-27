@@ -34,15 +34,32 @@
         <td>{{ prediction.questionId }}</td>
         <td>{{ prediction.text }}</td>
         <td>
-          <button *ngIf="prediction.id !== undefined" type="button" class="btn btn-primary" (click)="view(prediction.id)">
-            <i class="fa fa-eye"></i> View
-          </button>
-          <button *ngIf="prediction.id !== undefined" type="button" class="btn btn-warning" (click)="edit(prediction.id)">
-            <i class="fa fa-pencil"></i> Edit
-          </button>
-          <button *ngIf="prediction.id !== undefined" type="button" class="btn btn-danger" (click)="delete(prediction.id)">
-            <i class="fa fa-trash"></i> Delete
-          </button>
+          <div class="btn-group">
+            <button
+              type="submit"
+              [routerLink]="['/prediction', prediction.id, 'view']"
+              class="btn btn-info btn-sm"
+              data-cy="entityDetailsButton"
+            >
+              <i class="fa fa-eye"></i>
+              <span class="d-none d-md-inline" jhiTranslate="entity.action.view">View</span>
+            </button>
+
+            <button
+              type="submit"
+              [routerLink]="['/prediction', prediction.id, 'edit']"
+              class="btn btn-primary btn-sm"
+              data-cy="entityEditButton"
+            >
+              <i class="fa fa-pencil-alt"></i>
+              <span class="d-none d-md-inline" jhiTranslate="entity.action.edit">Edit</span>
+            </button>
+
+            <button type="submit" (click)="delete(prediction.id!)" class="btn btn-danger btn-sm" data-cy="entityDeleteButton">
+              <i class="fa fa-times"></i>
+              <span class="d-none d-md-inline" jhiTranslate="entity.action.delete">Delete</span>
+            </button>
+          </div>
         </td>
       </tr>
     </tbody>

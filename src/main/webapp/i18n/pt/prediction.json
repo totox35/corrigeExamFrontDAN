@@ -1,0 +1,27 @@
+{
+  "gradeScopeIsticApp": {
+    "prediction": {
+      "home": {
+        "title": "Predições",
+        "refreshListLabel": "Atualizar lista",
+        "createLabel": "Criar nova Predição",
+        "createOrEditLabel": "Criar ou editar Predição",
+        "notFound": "Nenhuma Predição encontrada"
+      },
+      "created": "Uma nova Predição foi criada com o identificador {{ param }}",
+      "updated": "Uma Predição foi atualizada com o identificador {{ param }}",
+      "deleted": "Uma Predição foi excluída com o identificador {{ param }}",
+      "delete": {
+        "question": "Tem certeza de que deseja excluir a Predição {{ id }}?"
+      },
+      "detail": {
+        "title": "Predição"
+      },
+      "id": "ID",
+      "text": "Texto",
+      "sheetId": "ID da Folha de Exame",
+      "questionNumber": "Número da Questão",
+      "question": "Questão"
+    }
+  }
+}

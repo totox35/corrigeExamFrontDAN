@@ -1,0 +1,27 @@
+{
+  "gradeScopeIsticApp": {
+    "prediction": {
+      "home": {
+        "title": "Predictions",
+        "refreshListLabel": "Refresh list",
+        "createLabel": "Create a new Prediction",
+        "createOrEditLabel": "Create or edit a Prediction",
+        "notFound": "No Predictions found"
+      },
+      "created": "A new Prediction is created with identifier {{ param }}",
+      "updated": "A Prediction is updated with identifier {{ param }}",
+      "deleted": "A Prediction is deleted with identifier {{ param }}",
+      "delete": {
+        "question": "Are you sure you want to delete Prediction {{ id }}?"
+      },
+      "detail": {
+        "title": "Prediction"
+      },
+      "id": "ID",
+      "text": "Text",
+      "sheetId": "Exam Sheet ID",
+      "questionNumber": "Question Number",
+      "question": "Question"
+    }
+  }
+}

@@ -2,7 +2,7 @@
   "gradeScopeIsticApp": {
     "prediction": {
       "home": {
-        "title": "Predictions",
+        "title": "Prédictions",
         "refreshListLabel": "Actualiser la liste",
         "createLabel": "Créer une nouvelle Prédiction",
         "createOrEditLabel": "Créer ou éditer une Prédiction",
@@ -12,17 +12,16 @@
       "updated": "La Prédiction avec l'identifiant {{ param }} a été mise à jour",
       "deleted": "La Prédiction avec l'identifiant {{ param }} a été supprimée",
       "delete": {
-        "question": "Etes-vous certain de vouloir supprimer la Prédiction {{ id }} ?"
+        "question": "Êtes-vous certain de vouloir supprimer la Prédiction {{ id }} ?"
       },
       "detail": {
         "title": "Prédiction"
       },
       "id": "ID",
       "text": "Texte",
-      "description": "Description",
-      "zonegeneratedid": "Zone générée ID",
-      "question": "Question",
-      "studentResponse": "Réponse de l'étudiant"
+      "sheetId": "ID de Feuille d'Examen",
+      "questionNumber": "Numéro de Question",
+      "question": "Question"
     }
   }
 }

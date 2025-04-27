@@ -1,1 +1,42 @@
-<p>it works</p>
+<div class="d-flex justify-content-center">
+  <div class="col-8">
+    <div *ngIf="prediction">
+      <h2 data-cy="predictionDetailsHeading"><span jhiTranslate="gradeScopeIsticApp.prediction.detail.title">Prédiction</span></h2>
+      <hr />
+      <jhi-alert-error></jhi-alert-error>
+      <jhi-alert></jhi-alert>
+      <dl class="row-md jh-entity-details">
+        <dt><span jhiTranslate="gradeScopeIsticApp.prediction.id">ID</span></dt>
+        <dd>
+          <span>{{ prediction.id }}</span>
+        </dd>
+        <dt><span jhiTranslate="gradeScopeIsticApp.prediction.text">Texte</span></dt>
+        <dd>
+          <span>{{ prediction.text }}</span>
+        </dd>
+        <dt><span jhiTranslate="gradeScopeIsticApp.prediction.sheetId">ID de Feuille d'Examen</span></dt>
+        <dd>
+          <div *ngIf="prediction.sheetId">
+            <a [routerLink]="['/exam-sheet', prediction.sheetId, 'view']">{{ prediction.sheetId }}</a>
+          </div>
+        </dd>
+        <dt><span jhiTranslate="gradeScopeIsticApp.prediction.questionNumber">Numéro de Question</span></dt>
+        <dd>
+          <span>{{ prediction.questionNumber }}</span>
+        </dd>
+        <dt><span jhiTranslate="gradeScopeIsticApp.prediction.question">Question</span></dt>
+        <dd>
+          <div *ngIf="prediction.questionId">
+            <a [routerLink]="['/question', prediction.questionId, 'view']">{{ prediction.questionId }}</a>
+          </div>
+        </dd>
+      </dl>
+      <button type="submit" (click)="previousState()" class="btn btn-info" data-cy="entityDetailsBackButton">
+        <fa-icon icon="arrow-left"></fa-icon>&nbsp;<span jhiTranslate="entity.action.back">Retour</span>
+      </button>
+      <button type="button" [routerLink]="['/prediction', prediction.id, 'edit']" class="btn btn-primary">
+        <fa-icon icon="pencil-alt"></fa-icon>&nbsp;<span jhiTranslate="entity.action.edit">Éditer</span>
+      </button>
+    </div>
+  </div>
+</div>
