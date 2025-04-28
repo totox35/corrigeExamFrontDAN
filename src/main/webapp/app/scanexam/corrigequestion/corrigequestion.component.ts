@@ -3499,7 +3499,7 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
     this.dropdownOpen = false;
   }
 
-  // Permet d'acceder les response groups'
+  // Access response groups
   async findSimilarPredictions(currentPrediction: Prediction): Promise<Prediction[]> {
     const response = await firstValueFrom(this.responsegroupService.findByPredictionId(currentPrediction.id!));
     const similarPredictionIds = response.body?.predictionIds || [];

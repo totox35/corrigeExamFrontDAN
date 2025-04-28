@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { StudentResponseService } from 'app/entities/student-response/service/student-response.service';
-import { firstValueFrom, Subject } from 'rxjs';
+import { firstValueFrom, lastValueFrom, map, Subject } from 'rxjs';
 import { ExamSheetService } from '../../entities/exam-sheet/service/exam-sheet.service';
 import { IExamSheet } from 'app/entities/exam-sheet/exam-sheet.model';
 import { QuestionService } from 'app/entities/question/service/question.service';
@@ -10,8 +10,9 @@ import { AlignImagesService } from '../services/align-images.service';
 import { PredictionService } from 'app/entities/prediction/service/prediction.service';
 import { CoupageDimageService } from './coupage-dimage.service';
 import { MLTService } from './mlt.service';
-import { IPrediction } from 'app/entities/prediction/prediction.model';
 import { ResponseGroupService } from 'app/entities/response-group/service/response-group.service.component';
+import { EmbeddingService } from '../embedding/embedding.service';
+import { IPrediction } from 'app/entities/prediction/prediction.model';
 
 interface ExamPageImage {
   imageData: ImageData;
@@ -27,6 +28,8 @@ interface ExamPageImage {
   providedIn: 'root',
 })
 export class PredictionStudentResponseService {
+  private abortController: AbortController | null = null;
+
   constructor(
     private examSheetService: ExamSheetService,
     private questionService: QuestionService,
@@ -38,6 +41,7 @@ export class PredictionStudentResponseService {
     private coupageDimageService: CoupageDimageService,
     private mlt: MLTService,
     private responseGroupService: ResponseGroupService,
+    private embeddingService: EmbeddingService,
   ) {}
 
   predictStudentResponsesFromQuestionIds(examId: number, questionId: number): Subject<number[]> {
@@ -47,8 +51,11 @@ export class PredictionStudentResponseService {
     });
     return subject;
   }
-
-  private abortController: AbortController | null = null;
+  public stopPrediction(): void {
+    if (this.abortController) {
+      this.abortController.abort();
+    }
+  }
 
   private async _predictStudentResponsesFromQuestionIds(examId: number, questionId: number, subject: Subject<number[]>): Promise<void> {
     this.abortController = new AbortController();
@@ -63,6 +70,7 @@ export class PredictionStudentResponseService {
       const predictionResponseId = predictionResponse.map(e => e.id);
 
       const q = _q.body || undefined;
+
       if (q !== undefined) {
         const _qs = await firstValueFrom(this.questionService.query({ numero: q.numero, examId }));
         const qs = _qs.body || undefined;
@@ -71,7 +79,9 @@ export class PredictionStudentResponseService {
         let currenthandling = 0;
 
         for (const sr of srsfilter) {
-          if (signal.aborted) return;
+          if (signal.aborted) {
+            return;
+          }
 
           for (const q1 of qs!) {
             currenthandling = currenthandling + 1;
@@ -99,11 +109,12 @@ export class PredictionStudentResponseService {
                 questionNumero: q1.numero!,
               };
 
+              // eslint-disable-next-line @typescript-eslint/no-shadow
               const predictionResponse = await firstValueFrom(this.predictionService.query({ questionId: q1.id }));
               const allpredictions = predictionResponse.body || [];
               let pass = false;
               for (const p of allpredictions) {
-                if (p.sheetId == sr.id!) {
+                if (p.sheetId === sr.id!) {
                   pass = true;
                   break;
                 }
@@ -112,7 +123,6 @@ export class PredictionStudentResponseService {
               if (!pass) {
                 await this.handlePrediction(newImage);
               }
-
               subject.next([currenthandling, max]);
             } catch (error: any) {
               console.error('Error cropping image:', error);
@@ -126,18 +136,10 @@ export class PredictionStudentResponseService {
         throw error;
       }
     } finally {
-      // Clear the abort controller when done
       this.abortController = null;
     }
 
     return;
-  }
-
-  // Add this method to stop the prediction process
-  public stopPrediction(): void {
-    if (this.abortController) {
-      this.abortController.abort();
-    }
   }
 
   private async handlePrediction(image: ExamPageImage): Promise<void> {
@@ -152,7 +154,6 @@ export class PredictionStudentResponseService {
           index: index1,
           value: value1,
         }))) {
-          // const base64Line = `data:image/png;base64,${refinedLine}`;
           const imgData = new ImageData(new Uint8ClampedArray(value), coupageResponse.widths[index], coupageResponse.heights[index]);
           const lineResult = await this.mlt.executeMLTFromImagData(imgData, coupageResponse.widths[index], coupageResponse.heights[index]);
 
@@ -172,18 +173,20 @@ export class PredictionStudentResponseService {
           questionNumber: image.questionNumero,
         };
 
-        const newPrediction = (await firstValueFrom(this.predictionService.create(predictionData))).body;
-        console.log('Prediction:', newPrediction);
+        const response = await firstValueFrom(this.predictionService.create(predictionData));
+        const newPrediction = response.body;
         if (newPrediction?.id && newPrediction?.questionId) {
           this.responseGroupService.assignPredictionToResponseGroup(newPrediction.id, newPrediction.questionId);
-          const responseGroups = this.responseGroupService.findByQuestionId(newPrediction.id);
+          // const responseGroups = this.responseGroupService.findByQuestionId(newPrediction.id); // FOR DEBUG
+          // eslint-disable-next-line no-console
+          // console.log('Groups:', responseGroups);
         }
         image.prediction = prediction.trim();
       } else {
         image.prediction = 'No prediction available';
       }
 
-      // Clear large data after processing
+      // Clear data after processing
       if (image.imageData) {
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
         // @ts-expect-error
