@@ -100,43 +100,6 @@ export class ResponseGroupService {
     }
   }
 
-  async assignPredictionToResponseGroup(predictionId: number, questionId: number): Promise<void> {
-    const responseGroupResponse = await firstValueFrom(this.findByPredictionId(predictionId));
-    if (responseGroupResponse.body?.id !== undefined) {
-      // eslint-disable-next-line no-console
-      console.log('There was already a group', responseGroupResponse.body?.predictionIds);
-      return;
-    } else {
-      const responseGroupsResponse = await firstValueFrom(this.findByQuestionId(questionId));
-      const predictionEmbedding = await this.calculatePredictionEmbedding(predictionId);
-      let maxSimilarity = 0;
-      let bestResponseGroup: IResponseGroup | null = null;
-      for (const responseGroup of responseGroupsResponse.body!) {
-        const similarity = this.calculateSimilarity(responseGroup.averageEmbedding!, predictionEmbedding);
-        if (maxSimilarity < similarity && similarity > 0.5) {
-          maxSimilarity = similarity;
-          bestResponseGroup = responseGroup;
-        }
-      }
-      if (bestResponseGroup) {
-        bestResponseGroup.predictionIds?.push(predictionId);
-        this.updateAverageEmbedding(bestResponseGroup, predictionEmbedding);
-        await firstValueFrom(this.update(bestResponseGroup));
-        // eslint-disable-next-line no-console
-        console.log('I updated the group', bestResponseGroup);
-      } else {
-        const newResponseGroup: IResponseGroup = {
-          questionId,
-          predictionIds: [predictionId],
-          averageEmbedding: predictionEmbedding,
-        };
-        const returnObject = await firstValueFrom(this.create(newResponseGroup));
-        // eslint-disable-next-line no-console
-        console.log('I created the group', returnObject.body);
-      }
-    }
-  }
-
   private calculateSimilarity(groupEmbedding: number[], predictionEmbedding: number[]): number {
     if (!groupEmbedding || !predictionEmbedding || groupEmbedding.length === 0 || predictionEmbedding.length === 0) {
       return 0;

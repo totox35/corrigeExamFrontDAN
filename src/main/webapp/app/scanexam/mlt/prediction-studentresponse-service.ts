@@ -130,6 +130,38 @@ export class PredictionStudentResponseService {
           }
         }
       }
+      try {
+        await firstValueFrom(this.embeddingService.initializeModel());
+      } catch (error) {
+        console.error('Error initializing the model:', error);
+        subject.error('Error initializing the model');
+        return;
+      }
+
+      // Calculate embeddings for all predictions
+      const predictions = await lastValueFrom(
+        this.predictionService.query({ questionId }).pipe(
+          map(response => {
+            const predictionDict: { [key: number]: string } = {};
+            response.body?.forEach(pred => {
+              if (pred.text !== null && pred.text !== undefined) {
+                predictionDict[pred.id!] = pred.text;
+              }
+            });
+            return predictionDict;
+          }),
+        ),
+      );
+      if (Object.keys(predictions).length > 0) {
+        const embeddings = await firstValueFrom(this.embeddingService.submitDataForEmbedding(Object.values(predictions)));
+        const predictionIds = Object.keys(predictions).map(Number);
+        // Use embeddings to create or update response groups
+        for (let i = 0; i < predictionIds.length; i++) {
+          const idNumber = predictionIds[i];
+          const embeddingArray = embeddings[i] as number[];
+          await this.responseGroupService.assignPredictionToResponseGroupUsingEmbedding(idNumber, questionId, embeddingArray);
+        }
+      }
     } catch (error) {
       console.error('Error in prediction process:', error);
       if (!signal.aborted) {
@@ -173,14 +205,8 @@ export class PredictionStudentResponseService {
           questionNumber: image.questionNumero,
         };
 
-        const response = await firstValueFrom(this.predictionService.create(predictionData));
-        const newPrediction = response.body;
-        if (newPrediction?.id && newPrediction?.questionId) {
-          this.responseGroupService.assignPredictionToResponseGroup(newPrediction.id, newPrediction.questionId);
-          // const responseGroups = this.responseGroupService.findByQuestionId(newPrediction.id); // FOR DEBUG
-          // eslint-disable-next-line no-console
-          // console.log('Groups:', responseGroups);
-        }
+        await firstValueFrom(this.predictionService.create(predictionData));
+
         image.prediction = prediction.trim();
       } else {
         image.prediction = 'No prediction available';
