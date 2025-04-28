@@ -17,6 +17,7 @@ import { AlertComponent } from '../../../shared/alert/alert.component';
 import { AlertErrorComponent } from '../../../shared/alert/alert-error.component';
 import { FaIconComponent } from '@fortawesome/angular-fontawesome';
 import { TranslateDirective } from '../../../shared/language/translate.directive';
+import { PredictionListComponent } from 'app/entities/prediction/list/list.component';
 
 @Component({
   selector: 'jhi-question',
@@ -86,6 +87,12 @@ export class QuestionComponent implements OnInit {
 
   delete(question: IQuestion): void {
     const modalRef = this.modalService.open(QuestionDeleteDialogComponent, { size: 'lg', backdrop: 'static' });
+    if (question.typeAlgoName === 'manuscrit') {
+      // TO DO : DELETE ALL PREDICTIONS LINKED TO QUESTION
+      // this.predictionService.deleteByQuestionId(question.id!));
+      // DID NOT WORK
+    }
+
     modalRef.componentInstance.question = question;
     // unsubscribe not needed because closed completes on modal close
     modalRef.closed.subscribe(reason => {
