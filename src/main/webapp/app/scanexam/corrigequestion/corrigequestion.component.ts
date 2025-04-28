@@ -4422,7 +4422,7 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
 
   async getRelatedChucks4CurrentPrediction() {
     const relatedChunks = await firstValueFrom(
-      this.relatedChunkService.getRelatedChunksByText(this.currentPrediction?.text!, this.exam?.courseId!.toString()),
+      this.relatedChunkService.getRelatedChunksByText(this.currentPrediction?.text!, this.exam?.courseId!.toString()!),
     );
     console.log('chunks:', relatedChunks);
     return relatedChunks;
@@ -4432,7 +4432,7 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
     const embedding = (await firstValueFrom(this.responsegroupService.findByPredictionId(this.currentPrediction?.id!))).body
       ?.averageEmbedding;
     const relatedChunks = await firstValueFrom(
-      this.relatedChunkService.getRelatedChunksByEmbedding(embedding!, this.exam?.courseId!.toString()),
+      this.relatedChunkService.getRelatedChunksByEmbedding(embedding!, this.exam?.courseId!.toString()!),
     );
     console.log('chunks:', relatedChunks);
     return relatedChunks;
