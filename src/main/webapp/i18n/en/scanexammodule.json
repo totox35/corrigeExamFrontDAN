@@ -574,7 +574,8 @@
     "pausePerformPrediction": "PAUSE",
     "acceptLLM": "Do you accept the suggested commented correction?",
     "doLLM": "Suggest a commented correction",
-    "proposeComments": "Propose Comments",
+    "proposeComments": "Propose a commented correction using the LLM model",
+    "proposeCommentsLabel": "Propose Comments",
     "filtergeneratedcomment": "Hide generated comments:"
   }
 }

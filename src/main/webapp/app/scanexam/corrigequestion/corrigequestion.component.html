@@ -399,9 +399,9 @@
               type="text"
               *ngIf="this.currentQuestion?.typeAlgoName === 'manuscrit'"
               pButton
-              [pTooltip]="'scanexam.deletemanuscriptcorrect' | translate"
+              [pTooltip]="'scanexam.proposeComments' | translate"
               [tooltipZIndex]="'3000'"
-              [label]="'scanexam.proposeComments' | translate"
+              [label]="'scanexam.proposeCommentsLabel' | translate"
               (click)="proposeComments()"
               [disabled]="blocked"
             ></button>
