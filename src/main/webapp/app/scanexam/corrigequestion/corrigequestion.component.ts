@@ -114,6 +114,7 @@ import { over } from 'cypress/types/lodash';
 import { CreateCommentsComponent } from '../annotate-template/create-comments/create-comments.component';
 import { CoupageDimageService } from '../mlt/coupage-dimage.service';
 import { MLTService } from '../mlt/mlt.service';
+import { RelatedChunksService } from '../ajouterpdf/relatedChunksService';
 
 enum ScalePolicy {
   FitWidth = 1,
@@ -355,6 +356,7 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
     private responsegroupService: ResponseGroupService,
     private coupageDimageService: CoupageDimageService,
     private mlt: MLTService,
+    private relatedChunkService: RelatedChunksService,
   ) {
     effect(() => {
       this.testdisableAndEnableKeyBoardShortCutSignal = this.testdisableAndEnableKeyBoardShortCut();
@@ -4095,6 +4097,7 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
   }
 
   proposeComments(): void {
+    this.getRelatedChucks4CurrentPrediction();
     const nbStudents = this.numberPagesInScan! / this.nbreFeuilleParCopie!;
     if (this.allpredictions.length !== nbStudents) {
       // Show popup/alert
@@ -4413,5 +4416,25 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
         }
       });
     });
+  }
+
+  //Connecting with pdfs
+
+  async getRelatedChucks4CurrentPrediction() {
+    const relatedChunks = await firstValueFrom(
+      this.relatedChunkService.getRelatedChunksByText(this.currentPrediction?.text!, this.exam?.courseId!.toString()!),
+    );
+    console.log('chunks:', relatedChunks);
+    return relatedChunks;
+  }
+
+  async getRelatedChucks4CurrentQuestion() {
+    const embedding = (await firstValueFrom(this.responsegroupService.findByPredictionId(this.currentPrediction?.id!))).body
+      ?.averageEmbedding;
+    const relatedChunks = await firstValueFrom(
+      this.relatedChunkService.getRelatedChunksByEmbedding(embedding!, this.exam?.courseId!.toString()!),
+    );
+    console.log('chunks:', relatedChunks);
+    return relatedChunks;
   }
 }
