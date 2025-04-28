@@ -2597,10 +2597,12 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
                   });
                   this.preferenceService.saveCommentSort4Question(this.examId + '_' + this.currentQuestion!.id!, m1);
                 }
+                this.blocked = false;
               });
             });
           },
         });
+        this.blocked = true;
       });
     }
   }
