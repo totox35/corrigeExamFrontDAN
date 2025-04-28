@@ -9,6 +9,8 @@ import { NgIf, NgFor } from '@angular/common';
   imports: [NgFor, NgIf],
   standalone: true,
   templateUrl: './error.component.html',
+  standalone: true,
+  imports: [CommonModule],
 })
 export class ErrorComponent implements OnInit, OnDestroy {
   errorMessage?: string;

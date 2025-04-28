@@ -1,0 +1,46 @@
+button {
+  margin: 0.3em;
+}
+
+#input,
+.col-1 {
+  width: auto;
+}
+
+.err {
+  font-weight: bold;
+  color: red;
+}
+
+.container {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  margin: 10px;
+}
+
+.pdf-management {
+  display: flex;
+  flex-direction: row;
+  flex: 3;
+  justify-content: space-evenly;
+  width: 40%;
+}
+
+.pdf-form {
+  display: flex;
+  flex-direction: column;
+}
+
+.pdf-list {
+  flex: 1;
+  margin-left: 20px;
+}
+
+.pdf-viewer {
+  margin-top: 10px;
+}
+
+.form {
+  width: 100%;
+}
