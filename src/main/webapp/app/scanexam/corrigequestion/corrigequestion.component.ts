@@ -3377,6 +3377,7 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
     }
   }
 
+  // TO REMOVE BUT USEFUL FOR WHEN A QUESTION IS DELETED (CHANGE TO COME)
   async deletePrediction4Question(): Promise<void> {
     if (this.currentQuestion?.typeAlgoName === 'manuscrit') {
       await firstValueFrom(this.predictionService.deleteByQuestionId(this.currentQuestion!.id!));
