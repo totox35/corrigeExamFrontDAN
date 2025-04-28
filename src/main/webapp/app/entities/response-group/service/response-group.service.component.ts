@@ -67,6 +67,39 @@ export class ResponseGroupService {
     return this.http.get<IResponseGroup>(`${this.resourceUrl}/prediction/${predictionId}`, { observe: 'response' });
   }
 
+  async assignPredictionToResponseGroupUsingEmbedding(predictionId: number, questionId: number, embedding: number[]): Promise<void> {
+    const responseGroupResponse = await firstValueFrom(this.findByPredictionId(predictionId));
+    if (responseGroupResponse.body?.id !== undefined) {
+      // eslint-disable-next-line no-console
+      // console.log('There was already a group', responseGroupResponse.body?.predictionIds);
+      return;
+    }
+    const responseGroupsResponse = await firstValueFrom(this.findByQuestionId(questionId));
+    let maxSimilarity = 0;
+    let bestResponseGroup: IResponseGroup | null = null;
+    for (const responseGroup of responseGroupsResponse.body!) {
+      const similarity = this.calculateSimilarity(responseGroup.averageEmbedding!, embedding);
+      if (maxSimilarity < similarity && similarity > 0.5) {
+        maxSimilarity = similarity;
+        bestResponseGroup = responseGroup;
+      }
+    }
+    if (bestResponseGroup) {
+      bestResponseGroup.predictionIds?.push(predictionId);
+      this.updateAverageEmbedding(bestResponseGroup, embedding);
+      await firstValueFrom(this.update(bestResponseGroup));
+      // console.log('I updated the group', bestResponseGroup); // to remove
+    } else {
+      const newResponseGroup: IResponseGroup = {
+        questionId,
+        predictionIds: [predictionId],
+        averageEmbedding: embedding,
+      };
+      await firstValueFrom(this.create(newResponseGroup));
+      // console.log('I created the group', returnObject.body);
+    }
+  }
+
   async assignPredictionToResponseGroup(predictionId: number, questionId: number): Promise<void> {
     const responseGroupResponse = await firstValueFrom(this.findByPredictionId(predictionId));
     if (responseGroupResponse.body?.id !== undefined) {
@@ -109,7 +142,7 @@ export class ResponseGroupService {
       return 0;
     }
 
-    // Checking if the arrys have the same length
+    // Checking if arrays have the same length
     if (groupEmbedding.length !== predictionEmbedding.length) {
       throw new Error('Embeddings must be of the same length');
     }
@@ -142,7 +175,7 @@ export class ResponseGroupService {
       return;
     }
 
-    // Checking if the arrys have the same length
+    // Checking if arrays have the same length
     if (responseGroup.averageEmbedding.length !== predictionEmbedding.length) {
       throw new Error('Embeddings must be of the same length');
     }
@@ -173,10 +206,14 @@ export class ResponseGroupService {
         return [];
       }
 
-      const embedding = await this.embeddingService.executeEmbeddingFromText(predictionText);
-      if (embedding) {
-        return Array.from(embedding); // Convert Float32Array to regular array
+      // Extract the embedding from the Observable
+      const embeddingResponse = await firstValueFrom(this.embeddingService.executeEmbeddingFromText(predictionText));
+
+      if (embeddingResponse && Array.isArray(embeddingResponse)) {
+        return embeddingResponse.map(Number); // Ensure all elements are numbers
       }
+
+      console.error('Invalid embedding format:', embeddingResponse);
       return [];
     } catch (error) {
       console.error('Error calculating prediction embedding:', error);
