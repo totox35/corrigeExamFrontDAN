@@ -4263,7 +4263,7 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
             generated: true,
           };
           const createdComment = (await firstValueFrom(this.gradedCommentService.create(newComment))).body;
-          this.currentTextComment4Question!.push(signal(createdComment!));
+          this.currentGradedComment4Question!.push(signal(createdComment!));
         });
 
         try {
