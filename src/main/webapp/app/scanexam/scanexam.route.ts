@@ -20,8 +20,6 @@ import { MarkingSummaryComponent } from './marking-summary/marking-summary.compo
 import { ComparestudentanswerComponent } from './comparestudentanswer/comparestudentanswer.component';
 
 import { ExportanonymoupdfComponent } from './exportanonymoupdf/exportanonymoupdf.component';
-import { SearchanswerComponent } from './searchanswer/searchanswer.component';
-import { ImageAccessComponent } from './image-access/image-access.component';
 import { AjouterpdfComponent } from './ajouterpdf/ajouterpdf.component';
 
 // set the location of the OpenCV files
@@ -220,35 +218,7 @@ export const MarkingSummary_ROUTE: Route = {
     },
   },
 };
-/*
-export const SearchAnswer_ROUTE: Route = {
-  path: 'search_answear/:examid/:questionId',
-  canActivate: [UserRouteAccessService],
-  component: SearchanswerComponent,
-  data: {
-    authorities: ['ROLE_USER'],
-    pageTitle: 'home.answer',
-    documentation: {
-      en: 'https://correctexam.readthedocs.io/en/latest/user.html#step-6-correct-copies-question-by-question-or-student-by-student-or-any-other-combination',
-      fr: 'https://correctexam.readthedocs.io/fr/latest/user.html#etape-6-corriger-ses-copies-question-par-question-ou-etudiant-par-etudiant-ou-tout-autre-combinaison',
-    },
-  },
-};
 
-export const ImageAccess_ROUTE: Route = {
-  path: 'image-acces/:examid',
-  canActivate: [UserRouteAccessService],
-  component: ImageAccessComponent,
-  data: {
-    authorities: ['ROLE_USER'],
-    pageTitle: 'home.answer',
-    documentation: {
-      en: 'https://correctexam.readthedocs.io/en/latest/user.html#step-6-correct-copies-question-by-question-or-student-by-student-or-any-other-combination',
-      fr: 'https://correctexam.readthedocs.io/fr/latest/user.html#etape-6-corriger-ses-copies-question-par-question-ou-etudiant-par-etudiant-ou-tout-autre-combinaison',
-    },
-  },
-};
-*/
 export const AssocierCopiesEtudiantsToStudent_ROUTE: Route = {
   path: 'studentbindings/:examid/:currentStudent',
   canActivate: [UserRouteAccessService],
@@ -436,7 +406,6 @@ export const SCANEXAM_ROUTES = [
   EXPORTPDF_ROUTE,
   EXPORTPDFBYSHEET_ROUTE,
   CompareHybridCommentAnswer_ROUTE,
-  SearchAnswer_ROUTE,
   AJOUTERPDF_ROUTE,
   // MLT_ROUTE,
   // ImageAccess_ROUTE,
