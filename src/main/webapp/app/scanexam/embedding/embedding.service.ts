@@ -14,19 +14,14 @@ export class EmbeddingService {
   }
 
   // Function to submit data to the backend for embedding
-  submitDataForEmbedding(texts: string[]): Observable<Float32Array[]> {
+  submitDataForEmbedding(texts: string[]): Observable<number[][]> {
     return this.http
       .post('/api/submit-data', { texts })
-      .pipe(map((response: any) => response.embeddings.map((embedding: any) => new Float32Array(embedding))));
+      .pipe(map((response: any) => response.embeddings.map((embedding: any) => embedding.embedding)));
   }
 
   // Function for single text embedding
-  executeEmbeddingFromText(text: string): Observable<Float32Array | undefined> {
+  executeEmbeddingFromText(text: string): Observable<number[] | undefined> {
     return this.submitDataForEmbedding([text]).pipe(map(embeddings => embeddings[0]));
-  }
-
-  sendAlltexts(predictions: { [key: number]: string }): Observable<any> {
-    const texts = Object.values(predictions);
-    return this.submitDataForEmbedding(texts);
   }
 }

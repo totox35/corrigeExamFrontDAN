@@ -3394,10 +3394,14 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
     this.dropdownOpen = false;
   }
 
-  /* Permet d'acceder les response groups'*/
+  /* Access response groups'*/
   async findSimilarPredictions(currentPrediction: Prediction): Promise<Prediction[]> {
+    const blaz = (await firstValueFrom(this.responsegroupService.findByPredictionId(currentPrediction.id!))).body;
+    console.log(blaz);
     const similarPredictionIds = (await firstValueFrom(this.responsegroupService.findByPredictionId(currentPrediction.id!))).body
       ?.predictionIds;
+    console.log('currentpredictionid', currentPrediction.id);
+    console.log(similarPredictionIds);
     const similarPredictions: IPrediction[] = [];
     for (const id of similarPredictionIds!) {
       similarPredictions.push((await firstValueFrom(this.predictionService.find(id))).body!);
@@ -3445,7 +3449,7 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
   }
 
   async initSimilarPrediction() {
-    if (this.currentPrediction == undefined) {
+    if (this.currentPrediction === undefined) {
       // Show popup/alert
       this.confirmationService.confirm({
         message: this.translateService.instant('scanexam.noPredictionDoAnalyseOCR'),

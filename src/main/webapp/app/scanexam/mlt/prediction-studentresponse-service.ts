@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { StudentResponseService } from 'app/entities/student-response/service/student-response.service';
-import { firstValueFrom, Subject } from 'rxjs';
+import { firstValueFrom, lastValueFrom, map, Subject } from 'rxjs';
 import { ExamSheetService } from '../../entities/exam-sheet/service/exam-sheet.service';
 import { IExamSheet } from 'app/entities/exam-sheet/exam-sheet.model';
 import { QuestionService } from 'app/entities/question/service/question.service';
@@ -12,6 +12,7 @@ import { CoupageDimageService } from './coupage-dimage.service';
 import { MLTService } from './mlt.service';
 import { ResponseGroupService } from 'app/entities/response-group/service/response-group.service.component';
 import { EmbeddingService } from '../embedding/embedding.service';
+import { IPrediction } from 'app/entities/prediction/prediction.model';
 
 interface ExamPageImage {
   imageData: ImageData;
@@ -27,6 +28,8 @@ interface ExamPageImage {
   providedIn: 'root',
 })
 export class PredictionStudentResponseService {
+  private abortController: AbortController | null = null;
+
   constructor(
     private examSheetService: ExamSheetService,
     private questionService: QuestionService,
@@ -49,80 +52,128 @@ export class PredictionStudentResponseService {
     return subject;
   }
 
+  public stopPrediction(): void {
+    if (this.abortController) {
+      this.abortController.abort();
+    }
+  }
+
   private async _predictStudentResponsesFromQuestionIds(examId: number, questionId: number, subject: Subject<number[]>): Promise<void> {
-    const _srs = await firstValueFrom(this.examSheetService.query({ examId }));
-    const srs: IExamSheet[] = _srs.body || [];
-    const _q = await firstValueFrom(this.questionService.find(questionId));
-    // Query predictions for this question
-    const _predictionResponse = await firstValueFrom(this.predictionService.query({ questionId }));
-    const predictionResponse = _predictionResponse.body || [];
-    const predictionResponseId = predictionResponse.map(e => e.id);
+    this.abortController = new AbortController();
+    const signal = this.abortController.signal;
 
-    const q = _q.body || undefined;
-    const predictions: { [key: number]: string } = {};
+    try {
+      const _srs = await firstValueFrom(this.examSheetService.query({ examId }));
+      const srs: IExamSheet[] = _srs.body || [];
+      const _q = await firstValueFrom(this.questionService.find(questionId));
+      const _predictionResponse = await firstValueFrom(this.predictionService.query({ questionId }));
+      const predictionResponse = _predictionResponse.body || [];
+      const predictionResponseId = predictionResponse.map(e => e.id);
 
-    if (q !== undefined) {
-      const _qs = await firstValueFrom(this.questionService.query({ numero: q.numero, examId }));
-      const qs = _qs.body || undefined;
-      const srsfilter = srs.filter(sr => !predictionResponseId.includes(sr.id));
-      const max = srsfilter.length * qs!.length;
-      let currenthandling = 0;
-      for (const sr of srsfilter) {
-        for (const q1 of qs!) {
-          currenthandling = currenthandling + 1;
-          const pageForStudent = sr.pagemin! + q1.zoneDTO!.pageNumber!;
-          const imageToCrop = {
-            examId,
-            factor: 1,
-            align: true,
-            template: false,
-            indexDb: this.preferenceService.getPreference().cacheDb !== 'sqlite',
-            page: pageForStudent,
-            z: q1.zoneDTO!,
-          };
+      const q = _q.body || undefined;
 
-          try {
-            const crop = await firstValueFrom(this.alignImagesService.imageCropFromZone(imageToCrop));
-            const imageData = new ImageData(new Uint8ClampedArray(crop.image), crop.width, crop.height);
-            // Add image to list
-            const newImage: ExamPageImage = {
-              imageData,
-              width: crop.width,
-              height: crop.height,
-              questionId: q1.id,
-              sheetId: sr.id!,
-              questionNumero: q1.numero!,
+      if (q !== undefined) {
+        const _qs = await firstValueFrom(this.questionService.query({ numero: q.numero, examId }));
+        const qs = _qs.body || undefined;
+        const srsfilter = srs.filter(sr => !predictionResponseId.includes(sr.id));
+        const max = srsfilter.length * qs!.length;
+        let currenthandling = 0;
+
+        for (const sr of srsfilter) {
+          if (signal.aborted) {
+            return;
+          }
+
+          for (const q1 of qs!) {
+            currenthandling = currenthandling + 1;
+            const pageForStudent = sr.pagemin! + q1.zoneDTO!.pageNumber!;
+            const imageToCrop = {
+              examId,
+              factor: 1,
+              align: true,
+              template: false,
+              indexDb: this.preferenceService.getPreference().cacheDb !== 'sqlite',
+              page: pageForStudent,
+              z: q1.zoneDTO!,
             };
-            await this.handlePrediction(newImage);
-            subject.next([currenthandling, max]);
-            // Collect prediction text
-            if (newImage.prediction) {
-              predictions[newImage.sheetId] = newImage.prediction;
+
+            try {
+              const crop = await firstValueFrom(this.alignImagesService.imageCropFromZone(imageToCrop));
+              const imageData = new ImageData(new Uint8ClampedArray(crop.image), crop.width, crop.height);
+              // Add image to list
+              const newImage: ExamPageImage = {
+                imageData,
+                width: crop.width,
+                height: crop.height,
+                questionId: q1.id,
+                sheetId: sr.id!,
+                questionNumero: q1.numero!,
+                prediction: undefined,
+              };
+
+              // eslint-disable-next-line @typescript-eslint/no-shadow
+              const predictionResponse = await firstValueFrom(this.predictionService.query({ questionId: q1.id }));
+              const allpredictions = predictionResponse.body || [];
+              let pass = false;
+              for (const p of allpredictions) {
+                if (p.sheetId === sr.id!) {
+                  pass = true;
+                  break;
+                }
+              }
+
+              if (!pass) {
+                await this.handlePrediction(newImage);
+              }
+
+              subject.next([currenthandling, max]);
+              // Collect prediction text
+            } catch (error: any) {
+              console.error('Error cropping image:', error);
             }
-          } catch (error: any) {
-            console.error('Error cropping image:', error);
           }
         }
       }
-    }
 
-    try {
-      await firstValueFrom(this.embeddingService.initializeModel());
-    } catch (error) {
-      console.error('Error initializing the model:', error);
-      subject.error('Error initializing the model');
-      return;
-    }
-
-    // Calculate embeddings for all predictions
-    if (Object.keys(predictions).length > 0) {
-      const embeddings = await firstValueFrom(this.embeddingService.sendAlltexts(predictions));
-      // Use embeddings to create or update response groups
-      for (const [sheetId, embedding] of Object.entries(embeddings)) {
-        const sheetIdNumber = Number(sheetId);
-        const embeddingArray = embedding as number[];
-        await this.responseGroupService.assignPredictionToResponseGroupUsingEmbedding(sheetIdNumber, questionId, embeddingArray);
+      try {
+        await firstValueFrom(this.embeddingService.initializeModel());
+      } catch (error) {
+        console.error('Error initializing the model:', error);
+        subject.error('Error initializing the model');
+        return;
       }
+
+      // Calculate embeddings for all predictions
+      const predictions = await lastValueFrom(
+        this.predictionService.query({ questionId }).pipe(
+          map(response => {
+            const predictionDict: { [key: number]: string } = {};
+            response.body?.forEach(pred => {
+              if (pred.text !== null && pred.text !== undefined) {
+                predictionDict[pred.id!] = pred.text;
+              }
+            });
+            return predictionDict;
+          }),
+        ),
+      );
+      if (Object.keys(predictions).length > 0) {
+        const embeddings = await firstValueFrom(this.embeddingService.submitDataForEmbedding(Object.values(predictions)));
+        const predictionIds = Object.keys(predictions).map(Number);
+        // Use embeddings to create or update response groups
+        for (let i = 0; i < predictionIds.length; i++) {
+          const idNumber = predictionIds[i];
+          const embeddingArray = embeddings[i] as number[];
+          await this.responseGroupService.assignPredictionToResponseGroupUsingEmbedding(idNumber, questionId, embeddingArray);
+        }
+      }
+    } catch (error) {
+      console.error('Error in prediction process:', error);
+      if (!signal.aborted) {
+        throw error;
+      }
+    } finally {
+      this.abortController = null;
     }
     return;
   }
@@ -151,7 +202,18 @@ export class PredictionStudentResponseService {
       }
       // Store and set prediction if we got any results
       if (prediction) {
-        image.prediction = prediction.trim();
+        const predictionData: IPrediction = {
+          sheetId: image.sheetId,
+          questionId: image.questionId,
+          text: prediction.trim(),
+          questionNumber: image.questionNumero,
+        };
+
+        const response = await firstValueFrom(this.predictionService.create(predictionData));
+        const newPrediction = response.body;
+        if (newPrediction) {
+          image.prediction = prediction.trim();
+        }
       } else {
         image.prediction = 'No prediction available';
       }
