@@ -1,7 +1,7 @@
 import { Component, NgZone, OnInit } from '@angular/core';
 import { HttpHeaders, HttpResponse } from '@angular/common/http';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { combineLatest } from 'rxjs';
+import { combineLatest, forkJoin, firstValueFrom } from 'rxjs';
 import { NgbModal, NgbPagination } from '@ng-bootstrap/ng-bootstrap';
 
 import { IQuestion } from '../question.model';
@@ -17,6 +17,8 @@ import { AlertComponent } from '../../../shared/alert/alert.component';
 import { AlertErrorComponent } from '../../../shared/alert/alert-error.component';
 import { FaIconComponent } from '@fortawesome/angular-fontawesome';
 import { TranslateDirective } from '../../../shared/language/translate.directive';
+import { PredictionService } from 'app/entities/prediction/service/prediction.service';
+import { ResponseGroupService } from 'app/entities/response-group/service/response-group.service.component';
 
 @Component({
   selector: 'jhi-question',
@@ -52,6 +54,8 @@ export class QuestionComponent implements OnInit {
     protected router: Router,
     protected modalService: NgbModal,
     private zone: NgZone,
+    private predictionService: PredictionService,
+    private responseGroupService: ResponseGroupService,
   ) {}
 
   loadPage(page?: number, dontNavigate?: boolean): void {
@@ -84,10 +88,48 @@ export class QuestionComponent implements OnInit {
     return item.id!;
   }
 
-  delete(question: IQuestion): void {
+  async delete(question: IQuestion): Promise<void> {
+    try {
+      const predictionsRes = await firstValueFrom(this.predictionService.query({ questionId: question.id }));
+      const predictions = predictionsRes.body ?? [];
+
+      if (predictions.length === 0) {
+        // No predictions, directly open delete modal
+        this.openDeleteModal(question);
+        return;
+      }
+
+      // Handle responseGroups for each prediction
+      for (const prediction of predictions) {
+        if (prediction.id !== undefined) {
+          const responseGroupRes = await firstValueFrom(this.responseGroupService.findByPredictionId(prediction.id));
+          const responseGroup = responseGroupRes!.body;
+
+          if (responseGroup) {
+            responseGroup.predictionIds = responseGroup.predictionIds!.filter(pid => pid !== prediction.id);
+
+            if (responseGroup.predictionIds.length === 0) {
+              await firstValueFrom(this.responseGroupService.delete(responseGroup.id!));
+            } else {
+              await firstValueFrom(this.responseGroupService.update(responseGroup));
+            }
+          }
+        }
+      }
+
+      // After cleaning up responseGroups, delete all predictions
+      await firstValueFrom(this.predictionService.deleteByQuestionId(question.id!));
+
+      // Now open the modal to delete the question
+      this.openDeleteModal(question);
+    } catch (err) {
+      console.error('Error during deletion process:', err);
+    }
+  }
+
+  private openDeleteModal(question: IQuestion): void {
     const modalRef = this.modalService.open(QuestionDeleteDialogComponent, { size: 'lg', backdrop: 'static' });
     modalRef.componentInstance.question = question;
-    // unsubscribe not needed because closed completes on modal close
     modalRef.closed.subscribe(reason => {
       if (reason === 'deleted') {
         this.loadPage();
