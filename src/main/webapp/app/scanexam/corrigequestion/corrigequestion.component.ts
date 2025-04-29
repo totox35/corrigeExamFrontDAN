@@ -50,7 +50,18 @@ import { TextCommentService } from 'app/entities/text-comment/service/text-comme
 import { PredictionService } from 'app/entities/prediction/service/prediction.service';
 import { TranslateService, TranslateModule } from '@ngx-translate/core';
 import { IQCMSolution } from '../../qcm';
-import { Observable, Subscriber, Subscription, debounceTime, distinctUntilChanged, firstValueFrom, lastValueFrom, map } from 'rxjs';
+import {
+  Observable,
+  Subscriber,
+  Subscription,
+  catchError,
+  debounceTime,
+  distinctUntilChanged,
+  firstValueFrom,
+  lastValueFrom,
+  map,
+  throwError,
+} from 'rxjs';
 import { HttpResponse } from '@angular/common/http';
 import { fromWorkerPool } from 'observable-webworker';
 import { worker1 } from '../services/workerimport';
@@ -114,7 +125,7 @@ import { over } from 'cypress/types/lodash';
 import { CreateCommentsComponent } from '../annotate-template/create-comments/create-comments.component';
 import { CoupageDimageService } from '../mlt/coupage-dimage.service';
 import { MLTService } from '../mlt/mlt.service';
-import { RelatedChunk, RelatedChunksService } from '../ajouterpdf/relatedChunksService';
+import { RelatedChunk, RelatedChunksService, RelatedChunksResponse } from '../ajouterpdf/relatedChunksService';
 
 enum ScalePolicy {
   FitWidth = 1,
@@ -4469,5 +4480,38 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
 
     console.log('chunks:', relatedChunks);
     return relatedChunks;
+  }
+
+  getRelatedChunksByEmbedding(embedding: number[], courseName: string, topN: number = 5): Observable<RelatedChunk[]> {
+    console.log(embedding);
+
+    const body = {
+      query: embedding,
+      courseName,
+      topN,
+    };
+
+    return this.http.post<RelatedChunksResponse>(`api/get-related-chunks-by-embedding`, body).pipe(
+      map(response => this.processResponse(response)),
+      catchError(error => {
+        console.error('Error fetching related chunks by embedding:', error);
+        return throwError(() => new Error(error.message || 'An unknown error occurred'));
+      }),
+    );
+  }
+
+  processResponse(response: RelatedChunksResponse): RelatedChunk[] {
+    if (response.status === 'success' && response.output) {
+      try {
+        // Parse the output string which contains the JSON array of chunks
+        return JSON.parse(response.output) as RelatedChunk[];
+      } catch (e) {
+        console.error('Error parsing chunks response:', e);
+        return [];
+      }
+    } else {
+      console.error('Failed to retrieve related chunks:', response);
+      return [];
+    }
   }
 }
