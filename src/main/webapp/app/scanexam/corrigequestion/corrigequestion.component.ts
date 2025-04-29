@@ -114,7 +114,7 @@ import { over } from 'cypress/types/lodash';
 import { CreateCommentsComponent } from '../annotate-template/create-comments/create-comments.component';
 import { CoupageDimageService } from '../mlt/coupage-dimage.service';
 import { MLTService } from '../mlt/mlt.service';
-import { RelatedChunksService } from '../ajouterpdf/relatedChunksService';
+import { RelatedChunk, RelatedChunksService } from '../ajouterpdf/relatedChunksService';
 
 enum ScalePolicy {
   FitWidth = 1,
@@ -3716,10 +3716,13 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
     this.responsegroupService
       .gradeAnswerTComment({
         question: question_text,
-        student_answer: this.currentPrediction?.text!,
+        student_answer: this.currentPrediction?.text ?? '',
         max_grade: this.maximumNote,
         step: this.noteStep,
         existing_comments: this.existingComments,
+        relevant_chunks: (await this.getRelatedChucks4CurrentQuestion())
+          .map(chunk => chunk.text)
+          .filter((text): text is string => text !== undefined),
       })
       .subscribe(async response => {
         console.log(response);
@@ -3777,12 +3780,14 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
     this.responsegroupService
       .gradeAnswerGComment({
         question: question_text,
-        student_answer: this.currentPrediction?.text!,
+        student_answer: this.currentPrediction?.text ?? '',
         max_grade: this.maximumNote,
         step: this.noteStep,
         existing_comments: this.existingComments,
         grade_type: grade_type,
-        relevant_chunks: this.respon,
+        relevant_chunks: (await this.getRelatedChucks4CurrentQuestion())
+          .map(chunk => chunk.text)
+          .filter((text): text is string => text !== undefined),
       })
       .subscribe(async response => {
         console.log(response);
@@ -4142,6 +4147,9 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
         question: question_text,
         student_answers: predictionTexts,
         nb_comments: nbComments,
+        relevant_chunks: (await this.getRelatedChucks4CurrentQuestion())
+          .map(chunk => chunk.text)
+          .filter((text): text is string => text !== undefined),
       })
       .subscribe(async response => {
         console.log(response);
@@ -4221,6 +4229,9 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
         grade_type: grade_type,
         step: step,
         max_grade: max_grade,
+        relevant_chunks: (await this.getRelatedChucks4CurrentQuestion())
+          .map(chunk => chunk.text)
+          .filter((text): text is string => text !== undefined),
       })
       .subscribe(async response => {
         console.log(response);
@@ -4420,22 +4431,42 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
     });
   }
 
-  //Connecting with pdfs
+  // Connecting with pdfs
 
-  async getRelatedChucks4CurrentPrediction() {
-    const relatedChunks = await firstValueFrom(
-      this.relatedChunkService.getRelatedChunksByText(this.currentPrediction?.text, this.exam?.courseId!.toString()),
-    );
+  async getRelatedChucks4CurrentPrediction(): Promise<RelatedChunk[]> {
+    const query = this.currentPrediction?.text;
+    const courseId = this.exam?.courseId?.toString();
+
+    if (!query || !courseId) {
+      console.warn('Missing query text or courseId');
+      return [];
+    }
+
+    const relatedChunks = await firstValueFrom(this.relatedChunkService.getRelatedChunksByText(query, courseId));
+
     console.log('chunks:', relatedChunks);
     return relatedChunks;
   }
 
-  async getRelatedChucks4CurrentQuestion() {
-    const embedding = (await firstValueFrom(this.responsegroupService.findByPredictionId(this.currentPrediction?.id!))).body
-      ?.averageEmbedding;
-    const relatedChunks = await firstValueFrom(
-      this.relatedChunkService.getRelatedChunksByEmbedding(embedding!, this.exam?.courseId!.toString()!),
-    );
+  async getRelatedChucks4CurrentQuestion(): Promise<RelatedChunk[]> {
+    const predictionId = this.currentPrediction?.id;
+    const courseId = this.exam?.courseId?.toString();
+
+    if (!predictionId || !courseId) {
+      console.warn('Missing prediction ID or courseId');
+      return [];
+    }
+
+    const response = await firstValueFrom(this.responsegroupService.findByPredictionId(predictionId));
+    const embedding = response.body?.averageEmbedding;
+
+    if (!embedding) {
+      console.warn('Missing embedding');
+      return [];
+    }
+
+    const relatedChunks = await firstValueFrom(this.relatedChunkService.getRelatedChunksByEmbedding(embedding, courseId));
+
     console.log('chunks:', relatedChunks);
     return relatedChunks;
   }
