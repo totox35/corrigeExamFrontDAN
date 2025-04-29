@@ -13,11 +13,12 @@ import { HybridGradedCommentDeleteDialogComponent } from '../delete/hybrid-grade
 import { DataUtils } from 'app/core/util/data-util.service';
 import { NgFor, NgIf } from '@angular/common';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
-import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
+import { FaIconLibrary, FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import { AlertErrorComponent } from 'app/shared/alert/alert-error.component';
 import { ItemCountComponent } from 'app/shared/pagination/item-count.component';
 import { AlertComponent } from 'app/shared/alert/alert.component';
 import { SortDirective } from 'app/shared/sort/sort.directive';
+import { faRobot } from '@fortawesome/free-solid-svg-icons';
 
 export const ITEM_DELETED_EVENT = 'deleted';
 export const ASC = 'asc';
@@ -65,7 +66,10 @@ export class HybridGradedCommentComponent implements OnInit {
     protected dataUtils: DataUtils,
     protected modalService: NgbModal,
     private zone: NgZone,
-  ) {}
+    private library: FaIconLibrary,
+  ) {
+    this.library.addIcons(faRobot);
+  }
 
   trackId = (_index: number, item: IHybridGradedComment): number => this.hybridGradedCommentService.getHybridGradedCommentIdentifier(item);
 

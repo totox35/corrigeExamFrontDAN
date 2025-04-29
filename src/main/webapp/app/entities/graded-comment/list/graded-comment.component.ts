@@ -15,8 +15,10 @@ import { SortDirective } from '../../../shared/sort/sort.directive';
 import { NgIf, NgFor } from '@angular/common';
 import { AlertComponent } from '../../../shared/alert/alert.component';
 import { AlertErrorComponent } from '../../../shared/alert/alert-error.component';
-import { FaIconComponent } from '@fortawesome/angular-fontawesome';
+import { FaIconComponent, FaIconLibrary } from '@fortawesome/angular-fontawesome';
 import { TranslateDirective } from '../../../shared/language/translate.directive';
+
+import { faRobot } from '@fortawesome/free-solid-svg-icons';
 
 @Component({
   selector: 'jhi-graded-comment',
@@ -52,7 +54,10 @@ export class GradedCommentComponent implements OnInit {
     protected router: Router,
     protected modalService: NgbModal,
     private zone: NgZone,
-  ) {}
+    private library: FaIconLibrary,
+  ) {
+    this.library.addIcons(faRobot);
+  }
 
   loadPage(page?: number, dontNavigate?: boolean): void {
     this.isLoading = true;
