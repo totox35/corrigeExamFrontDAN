@@ -30,26 +30,7 @@ export class RelatedChunksService {
   constructor(private http: HttpClient) {}
 
   /**
-   * Method 1: Get related chunks by passing text query (embedding generated on server)
-   *
-   * @param query - The search query text (will be embedded on the server)
-   * @param courseName - The name of the course to search within
-   * @param topN - Number of results to return (default: 5)
-   * @returns Observable with parsed chunks
-   */
-  getRelatedChunksByText(query: string, courseName: string, topN: number = 5): Observable<RelatedChunk[]> {
-    const body = { query, courseName, topN };
-    return this.http.post<RelatedChunksResponse>(`${this.baseUrl}/get-related-chunks`, body).pipe(
-      map(response => this.processResponse(response)),
-      catchError(error => {
-        console.error('Error fetching related chunks by text:', error);
-        return throwError(() => new Error(error.message || 'An unknown error occurred'));
-      }),
-    );
-  }
-
-  /**
-   * Method 2: Get related chunks by passing pre-calculated embedding
+   * Get related chunks by passing pre-calculated embedding
    *
    * @param embedding - The pre-calculated embedding vector
    * @param courseName - The name of the course to search within

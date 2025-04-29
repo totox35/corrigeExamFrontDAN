@@ -3731,9 +3731,7 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
         max_grade: this.maximumNote,
         step: this.noteStep,
         existing_comments: this.existingComments,
-        relevant_chunks: (await this.getRelatedChucks4CurrentQuestion())
-          .map(chunk => chunk.text)
-          .filter((text): text is string => text !== undefined),
+        relevant_chunks: (await this.getRelatedChunks()).map(chunk => chunk.text).filter((text): text is string => text !== undefined),
       })
       .subscribe(async response => {
         console.log(response);
@@ -3796,9 +3794,7 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
         step: this.noteStep,
         existing_comments: this.existingComments,
         grade_type: grade_type,
-        relevant_chunks: (await this.getRelatedChucks4CurrentQuestion())
-          .map(chunk => chunk.text)
-          .filter((text): text is string => text !== undefined),
+        relevant_chunks: (await this.getRelatedChunks()).map(chunk => chunk.text).filter((text): text is string => text !== undefined),
       })
       .subscribe(async response => {
         console.log(response);
@@ -4115,7 +4111,7 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
   }
 
   proposeComments(): void {
-    this.getRelatedChucks4CurrentPrediction();
+    this.getRelatedChunks();
     const nbStudents = this.numberPagesInScan! / this.nbreFeuilleParCopie!;
     if (this.allpredictions.length !== nbStudents) {
       // Show popup/alert
@@ -4158,9 +4154,7 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
         question: question_text,
         student_answers: predictionTexts,
         nb_comments: nbComments,
-        relevant_chunks: (await this.getRelatedChucks4CurrentQuestion())
-          .map(chunk => chunk.text)
-          .filter((text): text is string => text !== undefined),
+        relevant_chunks: (await this.getRelatedChunks()).map(chunk => chunk.text).filter((text): text is string => text !== undefined),
       })
       .subscribe(async response => {
         console.log(response);
@@ -4240,9 +4234,7 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
         grade_type: grade_type,
         step: step,
         max_grade: max_grade,
-        relevant_chunks: (await this.getRelatedChucks4CurrentQuestion())
-          .map(chunk => chunk.text)
-          .filter((text): text is string => text !== undefined),
+        relevant_chunks: (await this.getRelatedChunks()).map(chunk => chunk.text).filter((text): text is string => text !== undefined),
       })
       .subscribe(async response => {
         console.log(response);
@@ -4444,22 +4436,7 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
 
   // Connecting with pdfs
 
-  async getRelatedChucks4CurrentPrediction(): Promise<RelatedChunk[]> {
-    const query = this.currentPrediction?.text;
-    const courseId = this.exam?.courseId?.toString();
-
-    if (!query || !courseId) {
-      console.warn('Missing query text or courseId');
-      return [];
-    }
-
-    const relatedChunks = await firstValueFrom(this.relatedChunkService.getRelatedChunksByText(query, courseId));
-
-    console.log('chunks:', relatedChunks);
-    return relatedChunks;
-  }
-
-  async getRelatedChucks4CurrentQuestion(): Promise<RelatedChunk[]> {
+  async getRelatedChunks(): Promise<RelatedChunk[]> {
     const predictionId = this.currentPrediction?.id;
     const courseId = this.exam?.courseId?.toString();
 
