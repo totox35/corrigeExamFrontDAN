@@ -15,7 +15,7 @@ export interface RelatedChunk {
 export interface RelatedChunksResponse {
   status: string;
   message: string;
-  output: string; // This will contain the JSON string of chunks
+  output: string; // This contains the JSON string of chunks
   exitCode: number;
   warnings?: string;
   error?: string;
@@ -30,29 +30,7 @@ export class RelatedChunksService {
   constructor(private http: HttpClient) {}
 
   /**
-   * Method 1: Get related chunks by passing text query (embedding generated on server)
-   *
-   * @param query - The search query text (will be embedded on the server)
-   * @param courseName - The name of the course to search within
-   * @param topN - Number of results to return (default: 5)
-   * @returns Observable with parsed chunks
-   */
-  getRelatedChunksByText(query: string, courseName: string, topN: number = 5): Observable<RelatedChunk[]> {
-    // Parameters to send to the API
-    const params = new HttpParams().set('query', query).set('courseName', courseName).set('topN', topN.toString());
-
-    // Make the GET request
-    return this.http.get<RelatedChunksResponse>(`${this.baseUrl}/get-related-chunks`, { params }).pipe(
-      map(response => this.processResponse(response)),
-      catchError(error => {
-        console.error('Error fetching related chunks by text:', error);
-        return throwError(() => new Error(error.message || 'An unknown error occurred'));
-      }),
-    );
-  }
-
-  /**
-   * Method 2: Get related chunks by passing pre-calculated embedding
+   * Get related chunks by passing pre-calculated embedding
    *
    * @param embedding - The pre-calculated embedding vector
    * @param courseName - The name of the course to search within
@@ -60,14 +38,8 @@ export class RelatedChunksService {
    * @returns Observable with parsed chunks
    */
   getRelatedChunksByEmbedding(embedding: number[], courseName: string, topN: number = 5): Observable<RelatedChunk[]> {
-    // Convert embedding array to JSON string
-    const embeddingJson = JSON.stringify(embedding);
-
-    // Parameters to send to the API
-    const params = new HttpParams().set('embedding', embeddingJson).set('courseName', courseName).set('topN', topN.toString());
-
-    // Make the GET request
-    return this.http.get<RelatedChunksResponse>(`${this.baseUrl}/get-related-chunks-by-embedding`, { params }).pipe(
+    const body = { query: embedding, courseName, topN };
+    return this.http.post<RelatedChunksResponse>(`${this.baseUrl}/get-related-chunks-by-embedding`, body).pipe(
       map(response => this.processResponse(response)),
       catchError(error => {
         console.error('Error fetching related chunks by embedding:', error);
@@ -82,8 +54,7 @@ export class RelatedChunksService {
   private processResponse(response: RelatedChunksResponse): RelatedChunk[] {
     if (response.status === 'success') {
       try {
-        // Parse the output string which contains the JSON array of chunks
-        return JSON.parse(response.output) as RelatedChunk[];
+        return response.output as unknown as RelatedChunk[];
       } catch (e) {
         console.error('Error parsing chunks response:', e);
         throw new Error('Failed to parse the chunks response');

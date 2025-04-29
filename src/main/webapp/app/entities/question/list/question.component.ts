@@ -129,6 +129,12 @@ export class QuestionComponent implements OnInit {
 
   private openDeleteModal(question: IQuestion): void {
     const modalRef = this.modalService.open(QuestionDeleteDialogComponent, { size: 'lg', backdrop: 'static' });
+    if (question.typeAlgoName === 'manuscrit') {
+      // TO DO : DELETE ALL PREDICTIONS LINKED TO QUESTION
+      // this.predictionService.deleteByQuestionId(question.id!));
+      // DID NOT WORK
+    }
+
     modalRef.componentInstance.question = question;
     modalRef.closed.subscribe(reason => {
       if (reason === 'deleted') {

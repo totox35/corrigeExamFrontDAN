@@ -50,7 +50,18 @@ import { TextCommentService } from 'app/entities/text-comment/service/text-comme
 import { PredictionService } from 'app/entities/prediction/service/prediction.service';
 import { TranslateService, TranslateModule } from '@ngx-translate/core';
 import { IQCMSolution } from '../../qcm';
-import { Observable, Subscriber, Subscription, debounceTime, distinctUntilChanged, firstValueFrom, lastValueFrom, map } from 'rxjs';
+import {
+  Observable,
+  Subscriber,
+  Subscription,
+  catchError,
+  debounceTime,
+  distinctUntilChanged,
+  firstValueFrom,
+  lastValueFrom,
+  map,
+  throwError,
+} from 'rxjs';
 import { HttpResponse } from '@angular/common/http';
 import { fromWorkerPool } from 'observable-webworker';
 import { worker1 } from '../services/workerimport';
@@ -114,7 +125,7 @@ import { over } from 'cypress/types/lodash';
 import { CreateCommentsComponent } from '../annotate-template/create-comments/create-comments.component';
 import { CoupageDimageService } from '../mlt/coupage-dimage.service';
 import { MLTService } from '../mlt/mlt.service';
-import { RelatedChunksService } from '../ajouterpdf/relatedChunksService';
+import { RelatedChunk, RelatedChunksService, RelatedChunksResponse } from '../ajouterpdf/relatedChunksService';
 
 enum ScalePolicy {
   FitWidth = 1,
@@ -1874,7 +1885,7 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
     this.searchedTerm = '';
     if (!this.init) {
       //Closing LLM suggestion
-      if (this.LLMcolorShow == true) {
+      if (this.LLMcolorShow === true) {
         this.rejectLLMButton();
       }
 
@@ -1905,7 +1916,7 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
     this.searchedTerm = '';
     if (!this.init) {
       //Closing LLM suggestion
-      if (this.LLMcolorShow == true) {
+      if (this.LLMcolorShow === true) {
         this.rejectLLMButton();
       }
 
@@ -3716,10 +3727,11 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
     this.responsegroupService
       .gradeAnswerTComment({
         question: question_text,
-        student_answer: this.currentPrediction?.text!,
+        student_answer: this.currentPrediction?.text ?? '',
         max_grade: this.maximumNote,
         step: this.noteStep,
         existing_comments: this.existingComments,
+        relevant_chunks: (await this.getRelatedChunks()).map(chunk => chunk.text).filter((text): text is string => text !== undefined),
       })
       .subscribe(async response => {
         console.log(response);
@@ -3777,11 +3789,12 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
     this.responsegroupService
       .gradeAnswerGComment({
         question: question_text,
-        student_answer: this.currentPrediction?.text!,
+        student_answer: this.currentPrediction?.text ?? '',
         max_grade: this.maximumNote,
         step: this.noteStep,
         existing_comments: this.existingComments,
         grade_type: grade_type,
+        relevant_chunks: (await this.getRelatedChunks()).map(chunk => chunk.text).filter((text): text is string => text !== undefined),
       })
       .subscribe(async response => {
         console.log(response);
@@ -3859,7 +3872,7 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
     }
     this.currentNote = Number(this.old_note);
     this.LLMcolorShow = false;
-    if (this.old_resp.id == undefined) {
+    if (this.old_resp.id === undefined) {
       this.removeAnswer();
     }
   }
@@ -4098,7 +4111,7 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
   }
 
   proposeComments(): void {
-    this.getRelatedChucks4CurrentPrediction();
+    this.getRelatedChunks();
     const nbStudents = this.numberPagesInScan! / this.nbreFeuilleParCopie!;
     if (this.allpredictions.length !== nbStudents) {
       // Show popup/alert
@@ -4141,6 +4154,7 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
         question: question_text,
         student_answers: predictionTexts,
         nb_comments: nbComments,
+        relevant_chunks: (await this.getRelatedChunks()).map(chunk => chunk.text).filter((text): text is string => text !== undefined),
       })
       .subscribe(async response => {
         console.log(response);
@@ -4220,6 +4234,7 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
         grade_type: grade_type,
         step: step,
         max_grade: max_grade,
+        relevant_chunks: (await this.getRelatedChunks()).map(chunk => chunk.text).filter((text): text is string => text !== undefined),
       })
       .subscribe(async response => {
         console.log(response);
@@ -4419,23 +4434,61 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
     });
   }
 
-  //Connecting with pdfs
+  // Connecting with pdfs
 
-  async getRelatedChucks4CurrentPrediction() {
-    const relatedChunks = await firstValueFrom(
-      this.relatedChunkService.getRelatedChunksByText(this.currentPrediction?.text!, this.exam?.courseId!.toString()!),
-    );
+  async getRelatedChunks(): Promise<RelatedChunk[]> {
+    const predictionId = this.currentPrediction?.id;
+    const courseId = this.exam?.courseId?.toString();
+
+    if (!predictionId || !courseId) {
+      console.warn('Missing prediction ID or courseId');
+      return [];
+    }
+
+    const response = await firstValueFrom(this.responsegroupService.findByPredictionId(predictionId));
+    const embedding = response.body?.averageEmbedding;
+
+    if (!embedding) {
+      console.warn('Missing embedding');
+      return [];
+    }
+
+    const relatedChunks = await firstValueFrom(this.relatedChunkService.getRelatedChunksByEmbedding(embedding, courseId));
+
     console.log('chunks:', relatedChunks);
     return relatedChunks;
   }
 
-  async getRelatedChucks4CurrentQuestion() {
-    const embedding = (await firstValueFrom(this.responsegroupService.findByPredictionId(this.currentPrediction?.id!))).body
-      ?.averageEmbedding;
-    const relatedChunks = await firstValueFrom(
-      this.relatedChunkService.getRelatedChunksByEmbedding(embedding!, this.exam?.courseId!.toString()!),
+  getRelatedChunksByEmbedding(embedding: number[], courseName: string, topN: number = 5): Observable<RelatedChunk[]> {
+    console.log(embedding);
+
+    const body = {
+      query: embedding,
+      courseName,
+      topN,
+    };
+
+    return this.http.post<RelatedChunksResponse>(`api/get-related-chunks-by-embedding`, body).pipe(
+      map(response => this.processResponse(response)),
+      catchError(error => {
+        console.error('Error fetching related chunks by embedding:', error);
+        return throwError(() => new Error(error.message || 'An unknown error occurred'));
+      }),
     );
-    console.log('chunks:', relatedChunks);
-    return relatedChunks;
+  }
+
+  processResponse(response: RelatedChunksResponse): RelatedChunk[] {
+    if (response.status === 'success' && response.output) {
+      try {
+        // Parse the output string which contains the JSON array of chunks
+        return JSON.parse(response.output) as RelatedChunk[];
+      } catch (e) {
+        console.error('Error parsing chunks response:', e);
+        return [];
+      }
+    } else {
+      console.error('Failed to retrieve related chunks:', response);
+      return [];
+    }
   }
 }

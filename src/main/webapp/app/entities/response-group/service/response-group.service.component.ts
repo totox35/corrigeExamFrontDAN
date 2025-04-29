@@ -67,6 +67,52 @@ export class ResponseGroupService {
     return this.http.get<IResponseGroup>(`${this.resourceUrl}/prediction/${predictionId}`, { observe: 'response' });
   }
 
+  // FOR LLM
+
+  gradeAnswerTComment(payload: {
+    question: string;
+    student_answer: string;
+    max_grade: number;
+    step: number;
+    existing_comments: ITextComment[];
+    relevant_chunks: string[];
+  }): Observable<any> {
+    return this.http.post<any>('http://localhost:8000/api/grade_with_text_comments', payload);
+  }
+
+  gradeAnswerGComment(payload: {
+    question: string;
+    student_answer: string;
+    max_grade: number;
+    step: number;
+    existing_comments: IGradedComment[];
+    grade_type: string;
+    relevant_chunks: string[];
+  }): Observable<any> {
+    return this.http.post<any>('http://localhost:8000/api/grade_with_graded_comments', payload);
+  }
+
+  proposeTComments(payload: {
+    question: string;
+    student_answers: string[];
+    nb_comments: number;
+    relevant_chunks: string[];
+  }): Observable<any> {
+    return this.http.post<any>('http://localhost:8000/api/propose_text_comments', payload);
+  }
+
+  proposeGComments(payload: {
+    question: string;
+    student_answers: string[];
+    nb_comments: number;
+    grade_type: string;
+    step: number;
+    max_grade: number;
+    relevant_chunks: string[];
+  }): Observable<any> {
+    return this.http.post<any>('http://localhost:8000/api/propose_graded_comments', payload);
+  }
+
   async assignPredictionToResponseGroupUsingEmbedding(predictionId: number, questionId: number, embedding: number[]): Promise<void> {
     const responseGroupResponse = await firstValueFrom(this.findByPredictionId(predictionId));
     if (responseGroupResponse.body?.id !== undefined) {
@@ -182,41 +228,5 @@ export class ResponseGroupService {
       console.error('Error calculating prediction embedding:', error);
       return [];
     }
-  }
-
-  gradeAnswerTComment(payload: {
-    question: string;
-    student_answer: string;
-    max_grade: number;
-    step: number;
-    existing_comments: ITextComment[];
-  }) {
-    return this.http.post<any>('http://localhost:8000/api/grade_with_text_comments', payload);
-  }
-
-  gradeAnswerGComment(payload: {
-    question: string;
-    student_answer: string;
-    max_grade: number;
-    step: number;
-    existing_comments: IGradedComment[];
-    grade_type: string;
-  }) {
-    return this.http.post<any>('http://localhost:8000/api/grade_with_graded_comments', payload);
-  }
-
-  proposeTComments(payload: { question: string; student_answers: string[]; nb_comments: number }) {
-    return this.http.post<any>('http://localhost:8000/api/propose_text_comments', payload);
-  }
-
-  proposeGComments(payload: {
-    question: string;
-    student_answers: string[];
-    nb_comments: number;
-    grade_type: string;
-    step: number;
-    max_grade: number;
-  }) {
-    return this.http.post<any>('http://localhost:8000/api/propose_graded_comments', payload);
   }
 }
