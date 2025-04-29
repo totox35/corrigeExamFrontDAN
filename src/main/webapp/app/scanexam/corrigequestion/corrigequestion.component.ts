@@ -1874,7 +1874,7 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
     this.searchedTerm = '';
     if (!this.init) {
       //Closing LLM suggestion
-      if (this.LLMcolorShow == true) {
+      if (this.LLMcolorShow === true) {
         this.rejectLLMButton();
       }
 
@@ -1905,7 +1905,7 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
     this.searchedTerm = '';
     if (!this.init) {
       //Closing LLM suggestion
-      if (this.LLMcolorShow == true) {
+      if (this.LLMcolorShow === true) {
         this.rejectLLMButton();
       }
 
@@ -3782,6 +3782,7 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
         step: this.noteStep,
         existing_comments: this.existingComments,
         grade_type: grade_type,
+        relevant_chunks: this.respon,
       })
       .subscribe(async response => {
         console.log(response);
@@ -3859,7 +3860,7 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
     }
     this.currentNote = Number(this.old_note);
     this.LLMcolorShow = false;
-    if (this.old_resp.id == undefined) {
+    if (this.old_resp.id === undefined) {
       this.removeAnswer();
     }
   }
@@ -4423,7 +4424,7 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
 
   async getRelatedChucks4CurrentPrediction() {
     const relatedChunks = await firstValueFrom(
-      this.relatedChunkService.getRelatedChunksByText(this.currentPrediction?.text!, this.exam?.courseId!.toString()!),
+      this.relatedChunkService.getRelatedChunksByText(this.currentPrediction?.text, this.exam?.courseId!.toString()),
     );
     console.log('chunks:', relatedChunks);
     return relatedChunks;
