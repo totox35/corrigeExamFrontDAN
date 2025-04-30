@@ -385,7 +385,7 @@
               class="sm:text-xs md:text-xs lg:text-base"
               styleClass="md:text-xs sm:p-button-sm md:p-button-sm lg:p-button"
               type="text"
-              *ngIf="this.currentQuestion?.typeAlgoName === 'manuscrit'"
+              *ngIf="this.currentQuestion?.typeAlgoName === 'manuscrit' && currentQuestion?.gradeType !== 'HYBRID'"
               pButton
               [pTooltip]="'scanexam.proposeComments' | translate"
               [tooltipZIndex]="'3000'"
@@ -1869,7 +1869,7 @@
         <button
           class="sm:text-xs md:text-xs lg:text-base"
           styleClass="md:text-xs sm:p-button-sm md:p-button-sm lg:p-button"
-          *ngIf="this.currentQuestion?.typeAlgoName === 'manuscrit' && LLMcolorShow == false"
+          *ngIf="this.currentQuestion?.typeAlgoName === 'manuscrit' && LLMcolorShow == false && currentQuestion?.gradeType !== 'HYBRID'"
           pButton
           (click)="doLLM()"
           [pTooltip]="'scanexam.doLLM' | translate"
