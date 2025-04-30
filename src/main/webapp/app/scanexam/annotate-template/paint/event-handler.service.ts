@@ -31,6 +31,9 @@ import { ConfirmationService } from 'primeng/api';
 import { IText } from 'fabric/fabric-impl';
 import { Observable, Subject, firstValueFrom } from 'rxjs';
 import { Platform } from '@angular/cdk/platform';
+import { PredictionService } from 'app/entities/prediction/service/prediction.service';
+import { ResponseGroup } from 'app/entities/response-group/response-group.model';
+import { ResponseGroupService } from 'app/entities/response-group/service/response-group.service.component';
 
 @Injectable({
   providedIn: 'root',
@@ -80,6 +83,8 @@ export class EventHandlerService {
     private translateService: TranslateService,
     private preferenceService: PreferenceService,
     private platform: Platform,
+    private predictionService: PredictionService,
+    private responseGroupService: ResponseGroupService,
   ) {}
 
   public set exam(c: IExam) {
@@ -150,7 +155,36 @@ export class EventHandlerService {
     });
   }
 
-  removeAllAction(): void {
+  async removeAllAction(): Promise<void> {
+    const questions = (await firstValueFrom(this.questionService.query())).body;
+    for (const question of questions!) {
+      const predictionsRes = await firstValueFrom(this.predictionService.query({ questionId: question.id }));
+      const predictions = predictionsRes.body ?? [];
+
+      if (predictions.length !== 0) {
+        // Handle responseGroups for each prediction
+        for (const prediction of predictions) {
+          if (prediction.id !== undefined) {
+            const responseGroupRes = await firstValueFrom(this.responseGroupService.findByPredictionId(prediction.id));
+            const responseGroup = responseGroupRes!.body;
+
+            if (responseGroup) {
+              responseGroup.predictionIds = responseGroup.predictionIds!.filter(pid => pid !== prediction.id);
+
+              if (responseGroup.predictionIds.length === 0) {
+                await firstValueFrom(this.responseGroupService.delete(responseGroup.id!));
+              } else {
+                await firstValueFrom(this.responseGroupService.update(responseGroup));
+              }
+            }
+          }
+        }
+      }
+
+      // After cleaning up responseGroups, delete all predictions
+      await firstValueFrom(this.predictionService.deleteByQuestionId(question.id!));
+    }
+
     this.allcanvas.forEach(c => {
       c.getObjects().forEach(o => this.canvas.remove(o));
       c.clear();
@@ -566,6 +600,31 @@ export class EventHandlerService {
       const question = [...this.questions.values()].find(q => q.zoneId === zid || q.titleZoneId === zid);
 
       if (question) {
+        const predictionsRes = await firstValueFrom(this.predictionService.query({ questionId: question.id }));
+        const predictions = predictionsRes.body ?? [];
+
+        if (predictions.length !== 0) {
+          // Handle responseGroups for each prediction
+          for (const prediction of predictions) {
+            if (prediction.id !== undefined) {
+              const responseGroupRes = await firstValueFrom(this.responseGroupService.findByPredictionId(prediction.id));
+              const responseGroup = responseGroupRes!.body;
+
+              if (responseGroup) {
+                responseGroup.predictionIds = responseGroup.predictionIds!.filter(pid => pid !== prediction.id);
+
+                if (responseGroup.predictionIds.length === 0) {
+                  await firstValueFrom(this.responseGroupService.delete(responseGroup.id!));
+                } else {
+                  await firstValueFrom(this.responseGroupService.update(responseGroup));
+                }
+              }
+            }
+          }
+        }
+
+        // After cleaning up responseGroups, delete all predictions
+        await firstValueFrom(this.predictionService.deleteByQuestionId(question.id!));
         const zoneIdsToDelete = [question.zoneId, question.titleZoneId].filter(id => id != null) as number[];
 
         //On repère tous les objets à enlever
