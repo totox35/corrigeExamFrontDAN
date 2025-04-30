@@ -3711,7 +3711,7 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
     } else {
       if (this.questions![0].gradeType === GradeType.DIRECT) {
         this.doLLM4TextComments();
-      } else {
+      } else if (this.questions![0].gradeType === GradeType.NEGATIVE || this.questions![0].gradeType === GradeType.POSITIVE) {
         this.doLLM4GradedComments();
       }
     }
@@ -3827,8 +3827,8 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
             const raw = line.replace(/^Note du commentaire\s*\d+\s*:/, '').trim();
             const parts = raw.split('/');
             const cleaned = parts[0].replace(',', '.').replace(/^[-−]/, '');
-            const parsedGrade = parseFloat(cleaned);
-            const stepGrade = Math.round(parsedGrade / this.step);
+            const parsedGrade = Number(cleaned);
+            const stepGrade = parsedGrade / this.noteStep;
             commentGrade = stepGrade;
           }
         }
@@ -4138,7 +4138,7 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
           );
           if (q?.gradeType === GradeType.DIRECT) {
             this.proposeTComments(qId, result.value, predictionTexts);
-          } else {
+          } else if (this.questions![0].gradeType === GradeType.NEGATIVE || this.questions![0].gradeType === GradeType.POSITIVE) {
             this.proposeGComments(qId, result.value, q?.gradeType!, q!.step!, q!.point!, predictionTexts);
           }
         }
