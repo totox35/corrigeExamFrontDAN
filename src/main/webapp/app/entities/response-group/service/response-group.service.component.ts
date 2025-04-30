@@ -71,7 +71,7 @@ export class ResponseGroupService {
 
   gradeAnswerTComment(payload: {
     question: string;
-    student_answer: string;
+    student_answer: string[];
     max_grade: number;
     step: number;
     existing_comments: ITextComment[];
@@ -82,7 +82,7 @@ export class ResponseGroupService {
 
   gradeAnswerGComment(payload: {
     question: string;
-    student_answer: string;
+    student_answer: string[];
     max_grade: number;
     step: number;
     existing_comments: IGradedComment[];

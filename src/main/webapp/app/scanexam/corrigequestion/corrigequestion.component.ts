@@ -3719,6 +3719,13 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
 
   async doLLM4TextComments() {
     const question_text = await this.getQuestionText();
+    const predictionIds = (await firstValueFrom(this.responsegroupService.findByPredictionId(this.currentPrediction?.id!))).body
+      ?.predictionIds;
+    let prediction_texts = [];
+    for (const p of predictionIds!) {
+      const pText = (await firstValueFrom(this.predictionService.find(p))).body?.text;
+      if (pText) prediction_texts.push(pText);
+    }
 
     this.existingComments = this.currentTextComment4Question
       ? this.currentTextComment4Question.map(signal => signal()) // Unwrap each Signal
@@ -3727,7 +3734,7 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
     this.responsegroupService
       .gradeAnswerTComment({
         question: question_text,
-        student_answer: this.currentPrediction?.text ?? '',
+        student_answer: prediction_texts,
         max_grade: this.maximumNote,
         step: this.noteStep,
         existing_comments: this.existingComments,
@@ -3782,6 +3789,14 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
     }
     const question_text = await this.getQuestionText();
 
+    const predictionIds = (await firstValueFrom(this.responsegroupService.findByPredictionId(this.currentPrediction?.id!))).body
+      ?.predictionIds;
+    let prediction_texts = [];
+    for (const p of predictionIds!) {
+      const pText = (await firstValueFrom(this.predictionService.find(p))).body?.text;
+      if (pText) prediction_texts.push(pText);
+    }
+
     this.existingComments = this.currentGradedComment4Question
       ? this.currentGradedComment4Question.map(signal => signal()) // Unwrap each Signal
       : [];
@@ -3789,7 +3804,7 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
     this.responsegroupService
       .gradeAnswerGComment({
         question: question_text,
-        student_answer: this.currentPrediction?.text ?? '',
+        student_answer: prediction_texts,
         max_grade: this.maximumNote,
         step: this.noteStep,
         existing_comments: this.existingComments,
