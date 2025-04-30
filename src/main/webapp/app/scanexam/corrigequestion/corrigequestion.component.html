@@ -7,7 +7,10 @@
         <!--<i class="pi pi-lock" style="font-size: 3rem"> </i>-->
         <p-progressSpinner></p-progressSpinner>
         <BR />
-        <div *ngIf="showavancement"><span jhiTranslate="scanexam.sheet">Copie</span> {{ currentCopieocr }} / {{ nbrecopieocr }}</div>
+        <div *ngIf="showavancement && !groupingInProgress">
+          <span jhiTranslate="scanexam.sheet">Copie</span> {{ currentCopieocr }} / {{ nbrecopieocr }}
+        </div>
+        <div *ngIf="showavancement && groupingInProgress"><span jhiTranslate="scanexam.wait4Groups">Copie</span></div>
         <BR />
         <p-button (click)="pausePerformPrediction()" [label]="'scanexam.pausePerformPrediction' | translate"></p-button>
       </div>
@@ -381,7 +384,7 @@
               [label]="'scanexam.manuscriptcorrectlabel' | translate"
               [disabled]="blocked"
             ></button>
-            <button
+            <!-- <button
               class="sm:text-xs md:text-xs lg:text-base"
               styleClass="md:text-xs sm:p-button-sm md:p-button-sm lg:p-button"
               type="text"
@@ -393,7 +396,7 @@
               (click)="proposeComments()"
               [disabled]="blocked"
             ></button>
-            <button [hidden]="!debug" type="text" pButton [label]="'reset'" (click)="removeAllAnswer()"></button>
+            <button [hidden]="!debug" type="text" pButton [label]="'reset'" (click)="removeAllAnswer()"></button> -->
           </div>
 
           <div class="col-2 p-0" *ngIf="!focusView">
@@ -929,7 +932,7 @@
         class="col-12 sm:col-12 md:col-12 lg:col-3 xl:col-3 p-0"
         style="overflow-y: auto; overflow-x: hidden; max-height: 85vh; position: sticky; top: 0"
       >
-        <div class="grid grid-nogutter">
+        <div class="grid grid-nogutter" style="margin-left: 10px">
           <div style="padding-bottom: 1rem" class="flex col-3 sm:col-3 md:col-3 lg:col-12 xl:col-12 flex flex-column">
             <div class="flex-item" *ngIf="currentQuestion?.libelle !== undefined && currentQuestion?.libelle !== ''">
               <span [tooltipPosition]="'top'" [pTooltip]="'scanexam.libelle' | translate">{{ currentQuestion?.libelle }}</span>
@@ -1095,7 +1098,11 @@
 
         <!-- vue text comment -->
 
-        <div class="grid" *ngIf="currentQuestion && currentQuestion?.gradeType === 'DIRECT' && currentQuestion?.typeAlgoName !== 'QCM'">
+        <div
+          class="grid"
+          style="margin-left: 10px"
+          *ngIf="currentQuestion && currentQuestion?.gradeType === 'DIRECT' && currentQuestion?.typeAlgoName !== 'QCM'"
+        >
           <div
             *ngFor="let comment of currentTextComment4Question | commentsort: examId! : currentQuestion.id!"
             style="padding-left: 0.5rem; padding-right: 0.5rem; padding-top: 0.2rem; padding-bottom: 0.2rem"
@@ -1241,6 +1248,7 @@
         <!-- vue graded comment -->
         <div
           class="grid"
+          style="margin-left: 10px"
           *ngIf="
             (currentQuestion && currentQuestion?.gradeType !== 'DIRECT' && currentQuestion?.gradeType !== 'HYBRID') ||
             currentQuestion?.typeAlgoName === 'QCM'
@@ -1454,7 +1462,11 @@
         </div>
 
         <!-- vue hybrid comment -->
-        <div class="grid" *ngIf="currentQuestion && currentQuestion?.gradeType === 'HYBRID' && currentQuestion?.typeAlgoName !== 'QCM'">
+        <div
+          class="grid"
+          style="margin-left: 10px"
+          *ngIf="currentQuestion && currentQuestion?.gradeType === 'HYBRID' && currentQuestion?.typeAlgoName !== 'QCM'"
+        >
           <div
             *ngFor="let comment of currentHybridGradedComment4Question | commentsort: examId! : currentQuestion.id!"
             style="padding-left: 0.5rem; padding-right: 0.5rem; padding-top: 0.2rem; padding-bottom: 0.2rem"
@@ -1744,6 +1756,7 @@
         <!-- vue nouveau commentaire -->
         <div
           class="grid"
+          style="margin-left: 10px"
           *ngIf="
             (minimizeComment ||
               !minimizeComment ||
@@ -1869,6 +1882,7 @@
         <button
           class="sm:text-xs md:text-xs lg:text-base"
           styleClass="md:text-xs sm:p-button-sm md:p-button-sm lg:p-button"
+          style="margin-left: 20px"
           *ngIf="this.currentQuestion?.typeAlgoName === 'manuscrit' && LLMcolorShow == false && currentQuestion?.gradeType !== 'HYBRID'"
           pButton
           (click)="doLLM()"

@@ -29,6 +29,7 @@ interface ExamPageImage {
 })
 export class PredictionStudentResponseService {
   private abortController: AbortController | null = null;
+  groupingInProgress = false;
 
   constructor(
     private examSheetService: ExamSheetService,
@@ -44,9 +45,9 @@ export class PredictionStudentResponseService {
     private embeddingService: EmbeddingService,
   ) {}
 
-  predictStudentResponsesFromQuestionIds(examId: number, questionId: number): Subject<number[]> {
+  predictStudentResponsesFromQuestionIds(examId: number, questionId: number, onGroupingStart: () => void): Subject<number[]> {
     const subject = new Subject<number[]>();
-    this._predictStudentResponsesFromQuestionIds(examId, questionId, subject).then(() => {
+    this._predictStudentResponsesFromQuestionIds(examId, questionId, subject, onGroupingStart).then(() => {
       subject.complete();
     });
     return subject;
@@ -57,7 +58,12 @@ export class PredictionStudentResponseService {
     }
   }
 
-  private async _predictStudentResponsesFromQuestionIds(examId: number, questionId: number, subject: Subject<number[]>): Promise<void> {
+  private async _predictStudentResponsesFromQuestionIds(
+    examId: number,
+    questionId: number,
+    subject: Subject<number[]>,
+    onGroupingStart: () => void,
+  ): Promise<void> {
     this.abortController = new AbortController();
     const signal = this.abortController.signal;
 
@@ -137,6 +143,8 @@ export class PredictionStudentResponseService {
         subject.error('Error initializing the model');
         return;
       }
+
+      onGroupingStart();
 
       // Calculate embeddings for all predictions
       const predictions = await lastValueFrom(
