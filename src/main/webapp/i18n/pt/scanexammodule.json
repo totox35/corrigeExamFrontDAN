@@ -582,6 +582,7 @@
     "doLLM": "Sugerir uma correção comentada",
     "proposeComments": "Proponha uma correção comentada usando o modelo LLM",
     "proposeCommentsLabel": "Propor comentários",
-    "filtergeneratedcomment": "Ocultar comentários gerados:"
+    "filtergeneratedcomment": "Ocultar comentários gerados:",
+    "wait4Groups": "Cálculo de similaridade em andamento"
   }
 }

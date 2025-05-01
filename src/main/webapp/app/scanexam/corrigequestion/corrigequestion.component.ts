@@ -3334,6 +3334,8 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
       }
     });
   }
+
+  groupingInProgress = false;
   async performPrediction4Question(): Promise<void> {
     if (this.currentQuestion?.typeAlgoName === 'manuscrit') {
       this.blocked = true;
@@ -3342,7 +3344,10 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
 
       // Create a subscription variable that we can use to unsubscribe later
       this.predictionSubscription = this.predictionStudentResponseService
-        .predictStudentResponsesFromQuestionIds(+this.examId!, this.currentQuestion!.id!)
+        .predictStudentResponsesFromQuestionIds(+this.examId!, this.currentQuestion!.id!, () => {
+          this.groupingInProgress = true;
+        })
+
         .subscribe({
           next: (res: number[]) => {
             this.currentCopieocr = res[0];
@@ -3372,6 +3377,7 @@ export class CorrigequestionComponent implements OnInit, AfterViewInit {
     this.nbrecopieocr = 0;
     this.showavancement = false;
     this.dropdownOpen = false;
+    this.groupingInProgress = false;
   }
 
   pausePerformPrediction() {
