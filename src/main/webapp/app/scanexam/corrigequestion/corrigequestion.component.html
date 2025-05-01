@@ -381,6 +381,7 @@
               [label]="'scanexam.manuscriptcorrectlabel' | translate"
               [disabled]="blocked"
             ></button>
+            <!--
             <button
               class="sm:text-xs md:text-xs lg:text-base"
               styleClass="md:text-xs sm:p-button-sm md:p-button-sm lg:p-button"
@@ -393,6 +394,7 @@
               (click)="proposeComments()"
               [disabled]="blocked"
             ></button>
+            -->
             <button [hidden]="!debug" type="text" pButton [label]="'reset'" (click)="removeAllAnswer()"></button>
           </div>
 
