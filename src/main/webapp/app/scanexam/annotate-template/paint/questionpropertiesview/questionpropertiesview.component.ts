@@ -19,7 +19,7 @@ import { IHybridGradedComment } from 'app/entities/hybrid-graded-comment/hybrid-
 import { ZoneService } from 'app/entities/zone/service/zone.service';
 import { TranslateModule } from '@ngx-translate/core';
 import { Button } from 'primeng/button';
-import { InputSwitchModule } from 'primeng/inputswitch';
+import { ToggleSwitchModule } from 'primeng/toggleswitch';
 import { CheckboxModule } from 'primeng/checkbox';
 import { MessageModule } from 'primeng/message';
 import { KeyFilterModule } from 'primeng/keyfilter';
@@ -31,7 +31,7 @@ import { TranslateDirective } from '../../../../shared/language/translate.direct
 import { AlertErrorComponent } from '../../../../shared/alert/alert-error.component';
 import { NgIf, NgFor } from '@angular/common';
 import { CreateCommentsComponent } from '../../create-comments/create-comments.component';
-import { SidebarModule } from 'primeng/sidebar';
+import { DrawerModule } from 'primeng/drawer';
 
 type SelectableEntity = IQuestionType;
 export type EntityResponseType = HttpResponse<IQuestion>;
@@ -60,7 +60,7 @@ export type EntityResponseType = HttpResponse<IQuestion>;
   ],
   standalone: true,
   imports: [
-    SidebarModule,
+    DrawerModule,
     CreateCommentsComponent,
     NgIf,
     FormsModule,
@@ -75,7 +75,7 @@ export type EntityResponseType = HttpResponse<IQuestion>;
     KeyFilterModule,
     MessageModule,
     CheckboxModule,
-    InputSwitchModule,
+    ToggleSwitchModule,
     Button,
     TranslateModule,
   ],
@@ -84,6 +84,9 @@ export class QuestionpropertiesviewComponent implements OnInit, OnDestroy {
   /** The selected questions. This is an array since a same question can be divided into several parts.
    * The first question of the array, if not empty, is the truely selected question. An empty array means no selection. */
   public questions: Array<IQuestion> = [];
+
+  @Input()
+  public alreadyInASideBar = false;
 
   @Input()
   public questionsInput: Array<IQuestion> = [];
@@ -214,17 +217,12 @@ export class QuestionpropertiesviewComponent implements OnInit, OnDestroy {
 
     this.questionTypeService.query().subscribe((res: HttpResponse<IQuestionType[]>) => {
       this.questiontypes = res.body || [];
-      console.log('Question Types:', this.questiontypes);
       this.questiontypes.forEach(q => {
-        console.log('Algo Name: ', q.algoName);
         if (q.algoName === 'manual') {
-          console.log('I chose manual');
           this.manualid = q.id!;
         } else if (q.algoName === 'QCM') {
-          console.log('I chose QCM');
           this.qcmid = q.id!;
         } else if (q.algoName === 'manuscrit') {
-          console.log('I chose manuscrit');
           this.manuscritid = q.id!;
         }
       });
@@ -320,9 +318,9 @@ export class QuestionpropertiesviewComponent implements OnInit, OnDestroy {
         typeId: question.typeId,
         defaultpoint: question.defaultpoint,
         randomHorizontalCorrection: question.randomHorizontalCorrection,
-        canExceedTheMax: question.canExceedTheMax,
-        canBeNegative: question.canBeNegative,
-        mustBeIgnoreInGlobalScale: question.mustBeIgnoreInGlobalScale,
+        canExceedTheMax: question.canExceedTheMax ? question.canExceedTheMax : false,
+        canBeNegative: question.canBeNegative ? question.canBeNegative : false,
+        mustBeIgnoreInGlobalScale: question.mustBeIgnoreInGlobalScale ? question.mustBeIgnoreInGlobalScale : false,
       },
       {
         emitEvent: false,
@@ -498,9 +496,6 @@ export class QuestionpropertiesviewComponent implements OnInit, OnDestroy {
    * When interacting with the point step widget
    */
   public pointChange(input: any): void {
-    if (input?.preventDefault) {
-      input.preventDefault();
-    }
     this.updateStepList(input.target.value);
     this.contentChange();
   }
@@ -508,10 +503,7 @@ export class QuestionpropertiesviewComponent implements OnInit, OnDestroy {
   /**
    * When interacting with the point step widget
    */
-  public defaultpointChange(input: any): void {
-    if (input?.preventDefault) {
-      input.preventDefault();
-    }
+  public defaultpointChange(): void {
     // this.updateStepList(input.target.value);
     this.contentChange();
   }
@@ -540,5 +532,10 @@ export class QuestionpropertiesviewComponent implements OnInit, OnDestroy {
     } else {
       this.updateForm();
     }
+  }
+
+  editComment($event: MouseEvent): void {
+    $event.preventDefault();
+    this.layoutsidebarVisible = true;
   }
 }

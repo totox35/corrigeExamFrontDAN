@@ -38,7 +38,7 @@ import { Answer2HybridGradedCommentService } from 'app/entities/answer-2-hybrid-
 import { ArraySortPipe } from '../sort';
 import { SliderModule } from 'primeng/slider';
 import { FormsModule } from '@angular/forms';
-import { InputSwitchModule } from 'primeng/inputswitch';
+import { ToggleSwitchModule } from 'primeng/toggleswitch';
 import { HasAnyAuthorityDirective } from '../../shared/auth/has-any-authority.directive';
 import { PaginatorModule } from 'primeng/paginator';
 import { TooltipModule } from 'primeng/tooltip';
@@ -70,7 +70,7 @@ import { ToastModule } from 'primeng/toast';
     NgIf,
     RouterLink,
     HasAnyAuthorityDirective,
-    InputSwitchModule,
+    ToggleSwitchModule,
     FormsModule,
     SliderModule,
     AsyncPipe,
@@ -395,7 +395,8 @@ export class VoirCopieComponent implements OnInit, AfterViewInit {
           '' +
             this.exam!.id +
             '_' +
-            this.selectionStudents![0].examSheets![0].id! +
+            this.sheet!.id +
+            //            this.selectionStudents![0].examSheets![0].id! +
             '_' +
             this.questionNumeros[this.questionindex] +
             '_' +
@@ -411,7 +412,8 @@ export class VoirCopieComponent implements OnInit, AfterViewInit {
           '' +
             this.exam!.id +
             '_' +
-            this.selectionStudents![0].examSheets![0].id! +
+            this.sheet!.id +
+            //            this.selectionStudents![0].examSheets![0].id! +
             '_' +
             this.questionNumeros[this.questionindex] +
             '_' +
@@ -423,7 +425,8 @@ export class VoirCopieComponent implements OnInit, AfterViewInit {
             '' +
               this.exam!.id +
               '_' +
-              this.selectionStudents![0].examSheets![0].id! +
+              this.sheet!.id +
+              //            this.selectionStudents![0].examSheets![0].id! +
               '_' +
               this.questionNumeros[this.questionindex] +
               '_' +

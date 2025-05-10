@@ -2,7 +2,6 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { IPrediction } from '../prediction.model';
-import { map } from 'rxjs/operators';
 import { createRequestOption } from 'app/core/request/request-util';
 import { HttpResponse } from '@angular/common/http';
 import { ApplicationConfigService } from 'app/core/config/application-config.service';
@@ -52,5 +51,18 @@ export class PredictionService {
 
   countHowManyUse(id: number): Observable<number> {
     return this.http.get<number>(`${this.resourceUrl}/countHowManyUse/${id}`);
+  }
+
+  findPredictionWithoutStudentResponse(predictionsids: number[], numero: number, examId: number): Observable<{ predictionsids: number[] }> {
+    const param = {
+      predictionsids,
+      numero,
+      examId,
+    };
+    return this.http.post<{ predictionsids: number[] }>(`${this.resourceUrl}/findPredictionWithoutStudentResponse`, param);
+  }
+
+  deleteByQuestionId(questionId: number): Observable<HttpResponse<any>> {
+    return this.http.delete(`${this.resourceUrl}/question/${questionId}`, { observe: 'response' });
   }
 }

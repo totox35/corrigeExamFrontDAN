@@ -103,7 +103,6 @@
                 <ng-template pTemplate="content">
                   <p-rating
                     *ngIf="noteSteps > 0 && _q && _q?.gradeType !== 'DIRECT'"
-                    [cancel]="true"
                     [stars]="noteSteps"
                     [(ngModel)]="comment.grade"
                     (ngModelChange)="updateComment($event, comment, true, false)"
@@ -179,7 +178,7 @@
                     *ngIf="comment.relative"
                     [min]="-100"
                     [max]="100"
-                    [step]="10"
+                    [step]="5"
                     [valueTemplate]="grade > 0 ? '+{value}%' : '{value}%'"
                     name="hybridgrade"
                     id="field_hybridgrade"
@@ -217,6 +216,7 @@
                   <label class="form-label" jhiTranslate="scanexam.hybridcommentStep" for="field_point">Pas</label>
                   <input
                     type="number"
+                    (mouseup)="$event.stopPropagation()"
                     name="step"
                     id="field_step"
                     data-cy="step"
@@ -284,7 +284,7 @@
               *ngIf="_q && _q?.gradeType === 'HYBRID' && relative"
               [min]="-100"
               [max]="100"
-              [step]="10"
+              [step]="5"
               [valueTemplate]="grade > 0 ? '+{value}%' : '{value}%'"
               name="hybridgrade"
               id="field_hybridgrade"
@@ -314,6 +314,7 @@
             <input
               *ngIf="_q?.gradeType === 'HYBRID'"
               type="number"
+              (mouseup)="$event.stopPropagation()"
               name="step"
               id="field_step"
               data-cy="step"
@@ -342,6 +343,7 @@
             <div class="flex align-content-center flex-wrap card-container">
               <div class="flex align-items-center justify-content-center font-bold text-gray-900 border-round m-2">
                 <p-fileUpload
+                  #fileUpload
                   [chooseIcon]="''"
                   [chooseStyleClass]="'p-button p-button-primary'"
                   mode="basic"
@@ -353,7 +355,7 @@
                   name="import[]"
                   accept="application/json"
                   [maxFileSize]="1000000"
-                  (uploadHandler)="onUpload($event)"
+                  (uploadHandler)="onUpload($event, fileUpload)"
                 ></p-fileUpload>
               </div>
               <div class="flex align-items-center justify-content-center font-bold text-gray-900 border-round m-2">

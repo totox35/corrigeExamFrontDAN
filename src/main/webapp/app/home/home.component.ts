@@ -18,14 +18,15 @@ import { MesCoursComponent } from 'app/scanexam/mes-cours/mes-cours.component';
 import { MesCoursComponent as MesCoursComponent_1 } from '../scanexam/mes-cours/mes-cours.component';
 import { PrimeTemplate } from 'primeng/api';
 import { DockModule } from 'primeng/dock';
-import { FileUploadModule } from 'primeng/fileupload';
+import { FileUpload, FileUploadModule } from 'primeng/fileupload';
 import { FormsModule } from '@angular/forms';
-import { InputSwitchModule } from 'primeng/inputswitch';
+import { ToggleSwitchModule } from 'primeng/toggleswitch';
 import { TooltipModule } from 'primeng/tooltip';
-import { SidebarModule } from 'primeng/sidebar';
+import { DrawerModule } from 'primeng/drawer';
 import { HasAnyAuthorityDirective } from '../shared/auth/has-any-authority.directive';
 import { TranslateDirective } from '../shared/language/translate.directive';
 import { NgIf } from '@angular/common';
+import { ButtonModule } from 'primeng/button';
 
 interface Upload {
   progress: number;
@@ -69,11 +70,12 @@ const calculateState = (upload: Upload, event: HttpEvent<unknown>): Upload => {
     TranslateDirective,
     RouterLink,
     HasAnyAuthorityDirective,
-    SidebarModule,
+    DrawerModule,
     TooltipModule,
-    InputSwitchModule,
+    ToggleSwitchModule,
     FormsModule,
     FileUploadModule,
+    ButtonModule,
     DockModule,
     PrimeTemplate,
     MesCoursComponent_1,
@@ -193,10 +195,12 @@ export class HomeComponent implements OnInit, OnDestroy {
     this.destroy$.complete();
   }
 
-  onUpload($event: any): void {
+  onUpload($event: any, fileUpload: FileUpload): void {
     if ($event.files && $event.files.length > 0) {
       this.uploadCache($event.files[0]).subscribe(response => {
         if (response.state === 'DONE') {
+          fileUpload?.clear();
+
           this.layoutsidebarVisible = false;
           this.blocked = false;
           this.message = '';

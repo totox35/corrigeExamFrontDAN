@@ -9,13 +9,13 @@
 
       <ng-template [ngIf]="CONNECTION_METHOD === CONNECTION_METHOD_LOCAL">
         <div>
-          <button (click)="login()" pbutton type="button" class="p-element mr-3 p-button p-component">
+          <p-button (click)="login()" pbutton pRipple class="mr-3">
             <span class="p-button-label" jhiTranslate="home.login">Authentifiez vous</span><span class="p-ink"></span>
-          </button>
+          </p-button>
           <button
             routerLink="account/register"
-            pbutton=""
-            pripple=""
+            pbutton
+            pripple
             type="button"
             class="p-element p-ripple p-button-outlined p-button p-component mr-3"
           >
@@ -52,7 +52,7 @@
 </div>
 <div *jhiHasAnyAuthority="'ROLE_USER'">
   <div *ngIf="!this.account?.authorities?.includes('ROLE_ADMIN')">
-    <p-sidebar [position]="'right'" [(visible)]="layoutsidebarVisible">
+    <p-drawer [position]="'right'" [(visible)]="layoutsidebarVisible">
       <div class="grid">
         <div class="sm:col-6 md:col-6 lg:col-12 xl:col-12">
           <div class="card">
@@ -67,11 +67,12 @@
                   [pTooltip]="'scanexam.studentdatatooltip' | translate"
                   >données étudiantes:</label
                 >
-                <p-inputSwitch inputId="switch1" [(ngModel)]="includeStudentsData"></p-inputSwitch>
+                <p-toggleSwitch inputId="switch1" [(ngModel)]="includeStudentsData"></p-toggleSwitch>
 
                 <div class="flex align-content-center flex-wrap card-container">
                   <div class="flex align-items-center justify-content-center font-bold text-gray-900 border-round m-2">
                     <p-fileUpload
+                      #fileUpload
                       [chooseIcon]="''"
                       [chooseStyleClass]="'p-button p-button-primary'"
                       mode="basic"
@@ -83,7 +84,7 @@
                       name="import[]"
                       accept="application/json"
                       [maxFileSize]="2000000000"
-                      (uploadHandler)="onUpload($event)"
+                      (uploadHandler)="onUpload($event, fileUpload)"
                     ></p-fileUpload>
                   </div>
                 </div>
@@ -92,7 +93,7 @@
           </div>
         </div>
       </div>
-    </p-sidebar>
+    </p-drawer>
 
     <p-dock [model]="dockItems" position="top" [styleClass]="'pdock'">
       <ng-template pTemplate="item" let-item>

@@ -13,7 +13,7 @@ small {
   font-size: x-large;
 }
 
-disabled-div {
+::ng-deep .disabled-div {
   opacity: 0.5;
   pointer-events: none;
 }
@@ -65,4 +65,22 @@ disabled-div {
   50% {
     box-shadow: 0 6px 8px rgba(255, 77, 77, 0.2);
   }
+}
+
+::ng-deep .p-overlay-mask {
+  background: rgba(0, 0, 0, 0.85);
+}
+
+p-galleria ::ng-deep .p-galleria {
+  overflow: hidden;
+  border-style: hidden;
+  border-width: var(--p-galleria-border-width);
+  border-color: var(--p-galleria-border-color);
+  border-radius: var(--p-galleria-border-radius);
+}
+
+.content-container {
+  padding-left: 0.5rem !important;
+  padding-right: 0.5rem !important;
+  padding-top: 0.8rem !important;
 }
